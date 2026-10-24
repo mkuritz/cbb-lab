@@ -1,9 +1,48 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Most Improved · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}</style></head><body><div class="w"><h2 style="margin-top:14px">Most Improved Teams · 2026-27 Preseason</h2><p class="mut sm" id="sub"></p>
-<div class="ctl"><select class="v2" id="cf"><option value="">All D-I</option></select> <label class="sm"><input type="checkbox" id="pd"> show teams with rosters not yet updated</label></div><div id="out"></div>
-<footer>Projected change = our roster-based projection for 2026-27 minus last season's adjusted net rating (points per 100 possessions vs an average D-I team). Built only from last season's results and this offseason's roster moves; see <a href="method.html">Method</a>. Freshmen and international newcomers are not yet credited, so teams with big recruiting classes are understated. Typical error ±5.7 pts. This is a projection, not a guarantee.</footer></div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Most Improved · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}</style></head><body><div class="w"><h2 style="margin-top:14px">Most Improved Teams &amp; Four-Factors Style · 2026-27</h2><p class="mut sm" id="sub"></p>
+<div class="grib" id="qrib" aria-label="Style and Top 25 filters"></div>
+<div class="grib" id="crib" aria-label="Quick conference filter"></div>
+<div class="ctl"><select class="v2" id="cf"><option value="">All D-I</option></select> <label class="sm"><input type="checkbox" id="pd"> show teams with rosters not yet updated</label></div>
+<div id="gm-out"></div>
+<div id="out"></div>
+<footer>Projected change = our roster-based projection for 2026-27 minus last season's adjusted net rating (points per 100 possessions vs an average D-I team). Tempo (AdjT), efficiency (AdjO/AdjD) and Four-Factors style tags use preseason efficiency priors and returning/incoming D-I player rates. Ratings: barttorvik.com. Built only from last season's results and this offseason's roster moves; see <a href="method.html">Method</a>. Typical error ±5.7 pts. This is a projection, not a guarantee.</footer></div>
 <script>var S=function(v){return v==null?"—":(v>0?"+":"")+v.toFixed(1)},P=function(v){return v==null?"—":Math.round(v*100)+"%"},C=function(v){return v>0?"pos":v<0?"neg":""};</script>
-<script>CBB.data(function(D){var E=CBB.E;sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked by projected change from last season. Updated "+D.built+".";
-cf.innerHTML+=[...new Set(D.teams.map(r=>r.conf))].sort().map(c=>"<option>"+E(c)+"</option>").join("");
-function draw(){var r=D.teams.filter(t=>(!cf.value||t.conf==cf.value)&&(pd.checked||t.status=="ok"));
-out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>Returning min</th><th>Returning prod</th><th>Transfers in</th><th>Transfers out</th><th>Other departures</th><th>Newcomers w/o D-I stats</th></tr>'+r.map((t,i)=>'<tr class="'+(t.status!="ok"?"pend":"")+'"><td>'+(t.status=="ok"?i+1:"·")+'</td><td><a href="team.html?id='+t.id+'">'+E(t.team)+'</a>'+(t.status!="ok"?' <span class="sm mut">roster pending</span>':'')+'</td><td>'+E(t.conf)+'</td><td>'+S(t.net)+'</td><td>'+S(t.proj)+'</td><td class="'+C(t.chg)+'"><b>'+S(t.chg)+'</b></td><td>'+P(t.retMin)+'</td><td>'+P(t.retProd)+'</td><td>'+t.nIn+'</td><td>'+t.nOut+'</td><td>'+t.nLeft+'</td><td>'+t.nNew+'</td></tr>').join("")+'</table></div>'}
+<script>CBB.data(function(D){var E=CBB.E,QF="",ALLG=false;sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked by projected change from last season, with Tempo (AdjT) & Four-Factors style badges. Updated "+D.built+" · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+var confs=[...new Set(D.teams.map(r=>r.conf))].sort();
+cf.innerHTML+=confs.map(c=>"<option>"+E(c)+"</option>").join("");
+var topConfs=["","SEC","Big Ten","Big 12","ACC","Big East","Mountain West","WCC","A-10","American"];
+function renderRibs(){
+ var qopts=[["","All Teams"],["top25","🏆 Preseason Top 25"],["tempo","⚡ Tempo Track Meet"],["three","🎯 3PT Perimeter Funnel"],["orb","💪 Glass / ORB Bully"],["press","🔒 Turnover Press"]];
+ qrib.innerHTML=qopts.map(x=>'<button type="button" data-qf="'+x[0]+'" class="'+(QF==x[0]?"on":"")+'">'+x[1]+'</button>').join("");
+ qrib.querySelectorAll("button").forEach(b=>b.onclick=function(){QF=b.getAttribute("data-qf")||"";draw()});
+ crib.innerHTML=topConfs.filter(c=>!c||confs.includes(c)).map(c=>'<button type="button" data-cf="'+E(c)+'" class="'+(cf.value==c?"on":"")+'">'+(c||"All Conferences")+'</button>').join("");
+ crib.querySelectorAll("button").forEach(b=>b.onclick=function(){cf.value=b.getAttribute("data-cf")||"";draw()});
+}
+function hasBadge(arr,k){return (arr||[]).some(b=>b.kind==k)}
+function drawGames(){
+ var G=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
+ var el=document.getElementById("gm-out");
+ if(!G.length){el.innerHTML="";return}
+ var show=ALLG?G:G.slice(0,6);
+ el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Opening-Week Featured Matchups &amp; Style Mismatches ('+G.length+')</h3><span class="mut sm">Nov 1–2 tip-off slate · Projected spread, tempo (possessions) &amp; Four-Factors style clashes · Ratings: barttorvik.com</span></div>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div><div class="gl">'+show.map(function(g){
+  var sp=g.spread_home==0?"PK":g.spread_home<0?(g.home+" "+g.spread_home):(g.away+" -"+g.spread_home);
+  return '<div class="card gm" style="margin:0;background:var(--panel2)"><div class="mut sm">'+CBB.fmtT(g.start)+(g.neutral?" · Neutral":"")+(g.tv?" · 📺 "+E(g.tv):"")+'</div>'
+   +'<div class="row"><b>'+(g.away_rk?'<span class="ap-tag">#'+g.away_rk+'</span>':'')+(g.away_tid?'<a href="team.html?id='+g.away_tid+'" style="color:inherit;text-decoration:none">'+E(g.away_name)+'</a>':E(g.away_name))+'</b><span class="mut sm">'+E(g.away_conf||"")+'</span><b>'+Math.round((1-g.home_win)*100)+'%</b></div>'
+   +'<div class="row"><b>'+(g.home_rk?'<span class="ap-tag">#'+g.home_rk+'</span>':'')+(g.home_tid?'<a href="team.html?id='+g.home_tid+'" style="color:inherit;text-decoration:none">'+E(g.home_name)+'</a>':E(g.home_name))+'</b><span class="mut sm">'+E(g.home_conf||"")+'</span><b>'+Math.round(g.home_win*100)+'%</b></div>'
+   +CBB.badgesHtml(g.badges)
+   +'<div class="cmp"><div><div class="l">SL Proj Line</div><b>'+E(sp)+'</b></div><div><div class="l">Proj Total</div><b>'+g.total+'</b></div><div><div class="l">Proj Tempo</div><b>'+g.pace+' poss</b></div></div></div>';
+ }).join("")+'</div></div>';
+ var tg=document.getElementById("gm-tog");if(tg)tg.onclick=function(){ALLG=!ALLG;drawGames()};
+}
+function draw(){
+ renderRibs();
+ drawGames();
+ var r=D.teams.filter(function(t){
+  if(cf.value&&t.conf!=cf.value)return false;
+  if(!pd.checked&&t.status!="ok")return false;
+  if(QF=="top25"&&!t.ap)return false;
+  if(QF&&QF!="top25"&&!hasBadge(t.badges,QF))return false;
+  return true;
+ });
+ out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team &amp; Style Mismatches</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>AdjT</th><th>Torvik O / D</th><th>eFG% · 3PAr · ORB%</th><th>Ret min</th><th>Ret prod</th><th>In / Out</th></tr>'+r.map((t,i)=>'<tr class="'+(t.status!="ok"?"pend":"")+'"><td>'+(t.status=="ok"?i+1:"·")+'</td><td>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+'<a href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b></a>'+(t.status!="ok"?' <span class="sm mut">roster pending</span>':'')+CBB.badgesHtml(t.badges)+'</td><td>'+E(t.conf)+'</td><td>'+S(t.net)+'</td><td>'+S(t.proj)+'</td><td class="'+C(t.chg)+'"><b>'+S(t.chg)+'</b></td><td>'+(t.adjT!=null?t.adjT.toFixed(1):"—")+'</td><td class="sm">'+(t.adjO!=null?t.adjO.toFixed(1)+" / "+t.adjD.toFixed(1):"—")+'</td><td class="sm mut">'+(t.efg!=null?t.efg+"% · "+t.threeRate+"% · "+t.orbPct+"%":"—")+'</td><td>'+P(t.retMin)+'</td><td>'+P(t.retProd)+'</td><td>'+t.nIn+' / '+(t.nOut+t.nLeft)+'</td></tr>').join("")+'</table></div>';
+}
 cf.onchange=pd.onchange=draw;draw()})</script></body></html>

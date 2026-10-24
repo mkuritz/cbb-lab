@@ -1,6 +1,18 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Teams · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}</style></head><body><div class="w"><h2 style="margin-top:14px">Teams</h2><p class="mut sm" id="sub"></p>
-<div class="ctl"><input class="v2" id="q" placeholder="Search team"></div><div id="out" class="gl"></div></div>
+<div class="grib" id="qrib" aria-label="Style and Top 25 filters"></div>
+<div class="ctl"><select class="v2" id="cf"><option value="">All D-I</option></select><input class="v2" id="q" placeholder="Search team"></div><div id="out" class="gl"></div>
+<footer>Ratings: barttorvik.com · Four-Factors style tags from returning and incoming D-I player profiles.</footer></div>
 <script>var S=function(v){return v==null?"—":(v>0?"+":"")+v.toFixed(1)},P=function(v){return v==null?"—":Math.round(v*100)+"%"},C=function(v){return v>0?"pos":v<0?"neg":""};</script>
-<script>CBB.data(function(D){var E=CBB.E;sub.textContent=D.teams.length+" D-I teams. Tap a team for incoming and outgoing players.";
-function draw(){var s=q.value.toLowerCase();out.innerHTML=D.teams.slice().sort((a,b)=>a.team.localeCompare(b.team)).filter(t=>!s||t.team.toLowerCase().includes(s)).map(t=>'<a class="card" style="margin:0;padding:12px;display:block" href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b><div class="sm mut">'+E(t.conf)+' · returning prod '+P(t.retProd)+' · in '+t.nIn+' / out '+(t.nOut+t.nLeft)+'</div><div class="sm '+C(t.chg)+'">Projected change '+S(t.chg)+(t.status!="ok"?" (roster pending)":"")+'</div></a>').join("")}
-q.oninput=draw;draw()})</script></body></html>
+<script>CBB.data(function(D){var E=CBB.E,QF="";sub.textContent=D.teams.length+" D-I teams · Tempo (AdjT) & Four-Factors style badges · Tap a team for roster & transfer breakdown.";
+cf.innerHTML+=[...new Set(D.teams.map(r=>r.conf))].sort().map(c=>"<option>"+E(c)+"</option>").join("");
+function renderRib(){
+ var qopts=[["","All Teams"],["top25","🏆 Top 25"],["tempo","⚡ Tempo Track Meet"],["three","🎯 3PT Perimeter Funnel"],["orb","💪 Glass / ORB Bully"],["press","🔒 Turnover Press"]];
+ qrib.innerHTML=qopts.map(x=>'<button type="button" data-qf="'+x[0]+'" class="'+(QF==x[0]?"on":"")+'">'+x[1]+'</button>').join("");
+ qrib.querySelectorAll("button").forEach(b=>b.onclick=function(){QF=b.getAttribute("data-qf")||"";draw()});
+}
+function draw(){
+ renderRib();
+ var s=q.value.toLowerCase();
+ out.innerHTML=D.teams.slice().sort((a,b)=>(a.ap||999)-(b.ap||999)||a.team.localeCompare(b.team)).filter(t=>(!cf.value||t.conf==cf.value)&&(!s||t.team.toLowerCase().includes(s))&&(!QF||(QF=="top25"?t.ap:(t.badges||[]).some(b=>b.kind==QF)))).map(t=>'<a class="card" style="margin:0;padding:12px;display:block;text-decoration:none;color:inherit" href="team.html?id='+t.id+'"><div>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+'<b>'+E(t.team)+'</b> <span class="sm mut">'+E(t.conf)+'</span></div><div class="sm mut" style="margin-top:2px">'+(t.adjT!=null?'AdjT '+t.adjT.toFixed(1)+' · AdjO '+t.adjO.toFixed(1)+' / AdjD '+t.adjD.toFixed(1)+' · ':'')+'ret prod '+P(t.retProd)+' · in '+t.nIn+' / out '+(t.nOut+t.nLeft)+'</div><div class="sm '+C(t.chg)+'">Projected change '+S(t.chg)+' (Proj Net '+S(t.proj)+')'+(t.status!="ok"?" (roster pending)":"")+'</div>'+CBB.badgesHtml(t.badges)+'</a>').join("");
+}
+cf.onchange=q.oninput=draw;draw()})</script></body></html>
