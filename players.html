@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Players, Rotations &amp; NBA Prospects · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>td,th{white-space:nowrap}.pos{color:#8ee04a}.neg{color:#ff5d6c}</style></head><body><div class="w"><h2 style="margin-top:14px">Players, Starting Lineups, Stars &amp; 2027 NBA Prospects · 2026-27</h2><p class="mut sm" id="sub"></p>
+<div class="tabs" id="vtabs" style="margin:10px 0"><button type="button" class="on" data-vt="leaders">🏀 Player Leaders &amp; Stars</button><button type="button" data-vt="nba">🎯 2027 NBA Draft Prospects</button><button type="button" data-vt="rotations">📋 Starting 5 &amp; Full Rosters by Team</button><button type="button" data-vt="opps">🚀 Usage &amp; Opportunity Spikes</button></div>
+<div class="grib" id="prib" aria-label="Quick player tier filter"></div>
+<div class="ctl" id="ctl-bar">
+ <input class="v2" id="q" placeholder="Search player, team or archetype…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px">
+ <select class="v2" id="cf"><option value="">All D-I Conferences</option></select>
+ <select class="v2" id="ps"><option value="">All Positions</option><option value="G">Guards (G)</option><option value="F">Forwards (F)</option><option value="C">Centers (C)</option></select>
+ <select class="v2" id="rl"><option value="">All Roles &amp; Tiers</option><option value="star">⭐ Star Players Only</option><option value="nba">🏀 NBA Draft Prospects</option><option value="st">★ Starters Only (Starting 5)</option><option value="tr">⇄ Incoming Transfers</option><option value="fr">🎓 Freshmen Only</option></select>
+ <select class="v2" id="so"><option value="pts">Sort: Proj PPG</option><option value="min">Sort: Proj Minutes</option><option value="usg">Sort: Usage Rate %</option><option value="pra">Sort: Proj PRA</option><option value="ws">Sort: 2025-26 Win Shares</option></select>
+</div>
+<div id="out"></div>
+<footer>Projected minutes (summed to 200 per team rotation), usage rate (USG%), Star Player tiers, and 2027 NBA Draft Prospect callouts combine 2025-26 D-I efficiency with 2026-27 full rosters, recruiting/prospect profiles, and team tempo (AdjT). Ratings: barttorvik.com. Tap any player for their full scouting profile and upcoming props.</footer></div>
+<script>CBB.data(function(D){
+ var E=CBB.E,VT="leaders";
+ if(location.hash==="#nba")VT="nba";
+ else if(location.hash==="#rotations")VT="rotations";
+ else if(location.hash==="#opps")VT="opps";
+ sub.textContent=(D.players||[]).length+" featured D-I players across "+D.teams.length+" full 2026-27 rosters · Star Players, 2027 NBA Draft Prospects, Starting 5 rotations, projected minutes & usage rate (USG%) · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+ var confs=[...new Set(D.teams.map(function(r){return r.conf}))].sort();
+ cf.innerHTML+=confs.map(function(c){return "<option>"+E(c)+"</option>"}).join("");
+
+ function renderPrib(){
+  var opts=[["","All Players"],["star","⭐ Star Players"],["nba","🏀 2027 NBA Prospects"],["st","★ Starting 5 Only"],["tr","⇄ Transfers"],["fr","🎓 Top Freshmen"]];
+  prib.innerHTML=opts.map(function(x){return '<button type="button" data-rf="'+x[0]+'" class="'+(rl.value===x[0]?"on":"")+'">'+x[1]+'</button>'}).join("");
+  prib.querySelectorAll("button").forEach(function(b){b.onclick=function(){rl.value=b.getAttribute("data-rf")||"";draw()}});
+ }
+
+ function pLink(p,tid){
+  return '<a href="#" class="plink" data-cbb-player="'+E(p.id||p.n||p.player)+'" data-cbb-tid="'+(tid||p.tid)+'" style="color:inherit;font-weight:800">'+E(p.n||p.player)+'</a>';
+ }
+
+ function drawLeaders(){
+  var s=(q.value||"").toLowerCase().trim();
+  var R=(D.players||[]).filter(function(p){
+   if(cf.value&&p.conf!==cf.value)return false;
+   if(ps.value&&p.pos!==ps.value)return false;
+   if(rl.value==="star"&&!p.is_star)return false;
+   if(rl.value==="nba"&&!p.nba_prospect)return false;
+   if(rl.value==="st"&&!p.starter)return false;
+   if(rl.value==="tr"&&p.origin!=="Transfer")return false;
+   if(rl.value==="fr"&&p.yr_short!=="FR"&&p.origin!=="Freshman")return false;
+   if(s&&(p.n+" "+p.team+" "+p.ab+" "+(p.prev_team||"")+" "+(p.nba_note||"")).toLowerCase().indexOf(s)<0)return false;
+   return true;
+  });
+  var sk=so.value;
+  R.sort(function(a,b){
+   if(sk==="min")return (b.proj_min||0)-(a.proj_min||0);
+   if(sk==="usg")return (b.usg||0)-(a.usg||0);
+   if(sk==="pra")return (b.proj_pra||0)-(a.proj_pra||0);
+   if(sk==="ws")return (b.ws||0)-(a.ws||0);
+   return (b.proj_pts||0)-(a.proj_pts||0);
+  });
+  out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Player</th><th>Pos · Yr · Ht</th><th>Team</th><th>Role, Star &amp; NBA Prospect Badges</th><th>Proj Min</th><th>USG%</th><th>Proj PPG</th><th>Proj RPG</th><th>Proj APG</th><th>Proj PRA</th><th>Last eFG% / TS%</th><th>Last WS</th></tr>'
+   +R.slice(0,220).map(function(p,i){
+    var mPct=Math.min(100,Math.round((p.proj_min||0)/36*100));
+    return '<tr><td>'+(i+1)+'</td><td>'+CBB.head(p.id,p.n,p.hs,"#38d0f0",28)+' '+pLink(p)+'</td><td class="sm mut">'+E(p.pos)+' · '+E(p.yr_short||"—")+(p.ht?' · '+E(p.ht):'')+'</td><td>'+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+CBB.logo(p.tid,16)+' <a href="team.html?id='+p.tid+'" style="color:inherit">'+E(p.team)+'</a> <span class="mut sm">'+E(p.conf)+'</span></td><td>'+CBB.roleBadge(p)+'</td><td><span class="min-bar"><i style="width:'+mPct+'%"></i></span><b>'+p.proj_min+'</b></td><td><span class="usg-pill">'+p.usg+'%</span></td><td><b>'+p.proj_pts+'</b></td><td>'+p.proj_reb+'</td><td>'+p.proj_ast+'</td><td><b style="color:#8ee04a">'+p.proj_pra+'</b></td><td class="sm mut">'+(p.gp?p.efg+'% / '+p.ts+'%':'—')+'</td><td>'+(p.gp?p.ws:'—')+'</td></tr>';
+   }).join("")+'</table></div>';
+ }
+
+ function drawNBA(){
+  var s=(q.value||"").toLowerCase().trim();
+  var N=[];
+  D.teams.forEach(function(t){
+   (t.rot||[]).forEach(function(p){
+    if(p.nba_prospect)N.push(p);
+   });
+  });
+  N=N.filter(function(p){
+   if(cf.value&&p.conf!==cf.value)return false;
+   if(ps.value&&p.pos!==ps.value)return false;
+   if(s&&(p.n+" "+p.team+" "+(p.nba_tier||"")+" "+(p.nba_note||"")).toLowerCase().indexOf(s)<0)return false;
+   return true;
+  });
+  N.sort(function(a,b){
+   var rA=a.nba_tier==="NBA Lottery"?1:(a.nba_tier==="NBA 1st Rd"?2:3);
+   var rB=b.nba_tier==="NBA Lottery"?1:(b.nba_tier==="NBA 1st Rd"?2:3);
+   return (rA-rB)||(b.proj_pts||0)-(a.proj_pts||0);
+  });
+  out.innerHTML='<div class="star-grid" style="grid-template-columns:repeat(auto-fill,minmax(330px,1fr))">'+N.map(function(p,i){
+   return '<div class="star-card nba" data-cbb-player="'+E(p.id||p.n)+'" data-cbb-tid="'+p.tid+'">'
+    +'<div style="display:flex;gap:10px;align-items:center">'
+    +CBB.head(p.id,p.n,p.hs,"#a855f7",48)
+    +'<div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15.5px">#'+(i+1)+' '+pLink(p)+' '+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+'</div>'
+    +'<div class="mut sm">'+CBB.logo(p.tid,16)+' <a href="team.html?id='+p.tid+'" style="color:#7dd3fc">'+E(p.team)+'</a> · '+E(p.conf)+' · '+E(p.pos)+' · '+E(p.yr_short||p.yr||"")+(p.ht?' · '+E(p.ht):'')+'</div>'
+    +'<div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">'+CBB.roleBadge(p)+'</div></div></div>'
+    +'<div class="sm" style="color:#e6edf6;margin-top:4px;line-height:1.45">'+E(p.nba_note||"2027 NBA Draft Prospect")+'</div>'
+    +'<div class="cmp" style="margin-top:4px"><div><div class="l">Proj Min / USG</div><b>'+p.proj_min+'m · '+p.usg+'%</b></div><div><div class="l">2026-27 Proj P/R/A</div><b>'+p.proj_pts+' / '+p.proj_reb+' / '+p.proj_ast+'</b></div><div><div class="l">Proj PRA</div><b style="color:#8ee04a">'+p.proj_pra+'</b></div></div>'
+    +'</div>';
+  }).join("")+'</div>';
+ }
+
+ function drawRotations(){
+  var s=(q.value||"").toLowerCase().trim();
+  var T=D.teams.filter(function(t){
+   if(cf.value&&t.conf!==cf.value)return false;
+   if(s&&t.team.toLowerCase().indexOf(s)<0&&!(t.rot||[]).some(function(p){return p.n.toLowerCase().indexOf(s)>=0}))return false;
+   return (t.rot&&t.rot.length>0);
+  });
+  T.sort(function(a,b){return (a.ap||999)-(b.ap||999)||(b.proj||0)-(a.proj||0)});
+  out.innerHTML='<div class="gl" style="grid-template-columns:repeat(auto-fill,minmax(370px,1fr))">'+T.slice(0,36).map(function(t){
+   var st5=(t.rot||[]).slice(0,5),bn=(t.rot||[]).slice(5,10);
+   return '<div class="card" style="margin:0;padding:12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<div>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+CBB.logo(t.id,22)+' <a href="team.html?id='+t.id+'" style="color:inherit;font-size:15px"><b>'+E(t.team)+'</b></a> <span class="mut sm">'+E(t.conf)+' ('+(t.rot||[]).length+' players)</span></div>'
+    +'<a href="team.html?id='+t.id+'" class="chip sm" style="text-decoration:none;font-size:11px">Full Roster →</a></div>'
+    +'<div style="font-size:10.5px;font-weight:800;color:#8ee04a;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 4px">★ Projected Starting 5</div>'
+    +'<table style="font-size:12px"><tr><th>Slot</th><th>Starter &amp; Badges</th><th>Min</th><th>USG%</th><th>Proj P/R/A</th></tr>'
+    +st5.map(function(p){
+     var tags=(p.is_star?' <span class="star-pill">⭐</span>':'')+(p.nba_prospect?' <span class="nba-pill '+(p.nba_tier==="NBA Lottery"?"lot":"")+'">🏀 '+E(p.nba_tier==="NBA Lottery"?"LOT":"NBA")+'</span>':'')+(p.origin==="Transfer"?' <span class="role-pill tr" title="From '+E(p.prev_team||"")+'">⇄</span>':'');
+     return '<tr><td><span class="role-pill st">'+E(p.slot||p.pos)+'</span></td><td>'+pLink(p,t.id)+tags+'</td><td><b>'+p.proj_min+'</b></td><td>'+p.usg+'%</td><td><b>'+p.proj_pts+'</b>/'+p.proj_reb+'/'+p.proj_ast+'</td></tr>';
+    }).join("")+'</table>'
+    +(bn.length?'<div style="font-size:10.5px;font-weight:800;color:#7dd3fc;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px">Second Unit &amp; Rotation (plus '+Math.max(0,(t.rot||[]).length-10)+' bench)</div>'
+    +'<table style="font-size:11.5px"><tr><th>Role</th><th>Player</th><th>Min</th><th>USG%</th><th>Proj P/R/A</th></tr>'
+    +bn.map(function(p){
+     var tags=(p.nba_prospect?' <span class="nba-pill">🏀</span>':'')+(p.origin==="Transfer"?' <span class="role-pill tr">⇄</span>':'');
+     return '<tr><td><span class="role-pill bn">'+E(p.slot||"Rot")+'</span></td><td>'+pLink(p,t.id)+tags+'</td><td>'+p.proj_min+'</td><td>'+p.usg+'%</td><td>'+p.proj_pts+'/'+p.proj_reb+'/'+p.proj_ast+'</td></tr>';
+    }).join("")+'</table>':'')
+    +'</div>';
+  }).join("")+'</div>';
+ }
+
+ function drawOpps(){
+  var s=(q.value||"").toLowerCase().trim();
+  var O=(D.opportunities||[]).filter(function(o){
+   if(cf.value&&o.conf!==cf.value)return false;
+   if(ps.value&&o.pos!==ps.value)return false;
+   if(s&&(o.player+" "+o.team+" "+o.because).toLowerCase().indexOf(s)<0)return false;
+   return true;
+  });
+  out.innerHTML='<div class="gl" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">'+O.map(function(o){
+   return '<div class="card" style="margin:0;padding:12px">'
+    +'<div style="display:flex;gap:10px;align-items:center">'
+    +CBB.head(o.id,o.player,o.hs,"#8ee04a",44)
+    +'<div style="flex:1"><div style="font-weight:800;font-size:14.5px">'+pLink(o,o.tid)+' '+(o.ap?'<span class="ap-tag">#'+o.ap+'</span>':'')+'</div>'
+    +'<div class="mut sm">'+CBB.logo(o.tid,16)+' <a href="team.html?id='+o.tid+'" style="color:inherit">'+E(o.team)+'</a> · '+E(o.conf)+' · '+E(o.pos)+'</div></div>'
+    +'<span class="role-pill st">+'+o.pts_diff+' PPG</span></div>'
+    +'<div class="sm" style="margin-top:8px;color:#d6e2ff">'+E(o.because)+'</div>'
+    +'<div class="cmp" style="grid-template-columns:1fr 1fr;margin-top:8px">'
+    +'<div><div class="l">2025-26 Base</div><b>'+o.base.min+' MIN · '+o.base.pts+' PPG</b><div class="mut sm">'+o.base.reb+' RPG · '+o.base.ast+' APG · '+o.base.usg+'% USG</div></div>'
+    +'<div style="border:1px solid #8ee04a44"><div class="l" style="color:#8ee04a">2026-27 Projected</div><b style="color:#8ee04a">'+o.proj.min+' MIN · '+o.proj.pts+' PPG</b><div class="mut sm">'+o.proj.reb+' RPG · '+o.proj.ast+' APG · '+o.proj.usg+'% USG</div></div>'
+    +'</div></div>';
+  }).join("")+'</div>';
+ }
+
+ function draw(){
+  renderPrib();
+  document.querySelectorAll("#vtabs button").forEach(function(b){b.classList.toggle("on",b.dataset.vt===VT)});
+  prib.style.display=rl.style.display=so.style.display=(VT==="leaders"?"":"none");
+  if(VT==="leaders")drawLeaders();
+  else if(VT==="nba")drawNBA();
+  else if(VT==="rotations")drawRotations();
+  else drawOpps();
+ }
+
+ vtabs.onclick=function(e){
+  var b=e.target.closest("[data-vt]");
+  if(b){VT=b.dataset.vt;draw()}
+ };
+ q.oninput=cf.onchange=ps.onchange=rl.onchange=so.onchange=draw;
+ draw();
+});</script></body></html>

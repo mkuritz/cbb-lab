@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Player Props · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="tailcard.js?v=1"></script><script src="cbb.js"></script></head><body><div class="w"><h2 style="margin-top:14px">Player Props &amp; Matchup Projections</h2><p class="mut sm" id="sub"></p>
+<div id="kbar"></div>
+<div class="grib" id="gmrib" aria-label="Prop game filter"></div>
+<div class="grib" id="mkrib" aria-label="Market quick filter"></div>
+<div class="ctl">
+ <input class="v2" id="q" placeholder="Search player, team or matchup…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px">
+ <select class="v2" id="rl"><option value="">All Rotation Players</option><option value="st">★ Starters Only (Starting 5)</option><option value="star">⭐ Star Players Only</option><option value="nba">🏀 2027 NBA Draft Prospects</option><option value="tr">⇄ Transfers Only</option></select>
+ <select class="v2" id="fl"><option value="">All Lines</option><option value="e">With Edge (2%+)</option></select>
+ <div class="chips" id="lay"><button class="chip on" data-l="cards">Cards</button><button class="chip" data-l="table">Table</button></div>
+</div>
+<div id="out"></div>
+<footer>Projections adjust each player's 2026-27 projected minutes, usage rate (USG%), and per-possession rates for the matchup's projected tempo (possessions) and opponent adjusted defensive efficiency (AdjD). Ratings: barttorvik.com. Tap any player to open their full rotation, usage &amp; efficiency modal.</footer></div>
+<script>CBB.data(function(D){
+ var E=CBB.E,P=D.props||[],GF="",MK="",L="cards";
+ var Q=new URLSearchParams(location.search),qG=Q.get("game"),qMk=Q.get("mk");
+ if(qG)GF=qG;
+ if(qMk)MK=qMk;
+ sub.textContent=P.length+" player prop projections across "+(D.games||[]).length+" Opening-Week matchups · Projected starters, minutes (MIN), usage rate (USG%), tempo & opponent defense adjustments · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+
+ function renderRibs(){
+  var games=D.games||[];
+  gmrib.innerHTML='<button type="button" data-gf="" class="'+(!GF?"on":"")+'">All Matchups ('+P.length+')</button>'+games.map(function(g){
+   var lb=(g.away_rk?"#"+g.away_rk+" ":"")+g.away+" @ "+(g.home_rk?"#"+g.home_rk+" ":"")+g.home;
+   return '<button type="button" data-gf="'+E(g.id)+'" class="'+(String(GF)===String(g.id)?"on":"")+'">'+E(lb)+'</button>';
+  }).join("");
+  gmrib.querySelectorAll("button").forEach(function(b){b.onclick=function(){GF=b.getAttribute("data-gf")||"";draw()}});
+
+  var mks=[["","All Markets"],["Points","🏀 Points"],["Rebounds","💪 Rebounds"],["Assists","🎯 Assists"],["3PM","🏹 3-Pointers (3PM)"],["PRA","⚡ Pts+Reb+Ast (PRA)"]];
+  mkrib.innerHTML=mks.map(function(m){return '<button type="button" data-mk="'+m[0]+'" class="'+(MK===m[0]?"on":"")+'">'+m[1]+'</button>'}).join("");
+  mkrib.querySelectorAll("button").forEach(function(b){b.onclick=function(){MK=b.getAttribute("data-mk")||"";draw()}});
+ }
+
+ function rows(){
+  var s=(q.value||"").toLowerCase().trim();
+  return P.filter(function(p){
+   if(GF&&String(p.gid)!==String(GF)&&p.matchup!==GF)return false;
+   if(MK&&p.mk!==MK)return false;
+   if(rl.value==="st"&&!p.starter)return false;
+   if(rl.value==="star"&&!p.is_star)return false;
+   if(rl.value==="nba"&&!p.nba_prospect)return false;
+   if(rl.value==="tr"&&p.origin!=="Transfer")return false;
+   if(fl.value==="e"&&(p.edge||0)<0.02)return false;
+   if(s&&(p.nm+" "+p.team+" "+p.ab+" "+p.opp+" "+p.matchup).toLowerCase().indexOf(s)<0)return false;
+   return true;
+  });
+ }
+
+ function nmLink(p){
+  return '<a href="#" class="plink" data-cbb-player="'+E(p.aid||p.nm)+'" data-cbb-tid="'+p.t+'" style="color:inherit;font-weight:800">'+E(p.nm)+'</a>';
+ }
+
+ function card(p){
+  var tm=(D.teams||[]).find(function(x){return x.id===p.t})||{};
+  var po=p.side==="Over"?p.ours:(1-p.ours),pf=p.side==="Over"?p.fair:(1-p.fair);
+  return '<div class="card pc" style="margin:0">'
+   +'<div class="top">'+CBB.head(p.aid,p.nm,p.hs,tm.col||"#38d0f0",48)
+   +'<div style="flex:1;min-width:0"><div class="nm">'+nmLink(p)+' '+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+CBB.logo(p.t,18)+'</div>'
+   +'<div class="sub">'+CBB.roleBadge(p)+' · <span class="usg-pill">'+p.proj_min+' MIN · '+p.usg+'% USG</span></div>'
+   +'<div class="mut sm" style="margin-top:2px">'+E(p.matchup)+' · '+CBB.fmtT(p.start)+'</div></div>'
+   +'<div class="proj"><b>'+p.proj+'</b><span>OUR PROJ</span></div></div>'
+   +CBB.badgesHtml(p.badges)
+   +'<div class="tiles" style="margin-top:8px"><div class="tile"><div class="l">'+E(p.mk)+'</div><div class="v">'+E(p.side)+' '+p.line+'</div></div><div class="tile"><div class="l">Ours</div><div class="v">'+CBB.pc(po)+'</div></div><div class="tile"><div class="l">Book Fair</div><div class="v">'+CBB.pc(pf)+'</div></div></div>'
+   +'<div class="mut sm" style="margin-top:6px;line-height:1.4">'+E(p.why)+'</div>'
+   +'<div class="mrow" style="margin-top:6px">'+CBB.edge(p.edge)+'<span style="margin-left:auto">Best '+(p.best?CBB.am(p.best[0])+' <span class="mut">'+E(p.best[1])+'</span>':'—')+'</span><span class="mut sm">'+p.nb+' books</span></div>'
+   +CBB.stakeHtml(po,pf,p.best?p.best[0]:null,p.side+" "+p.line+" "+p.mk)
+   +'<div style="display:flex;gap:6px;margin-top:8px;justify-content:space-between;align-items:center">'
+   +'<button type="button" class="chip sm" data-cbb-player="'+E(p.aid||p.nm)+'" data-cbb-tid="'+p.t+'" style="font-size:11px;padding:4px 8px">📊 Player Splits &amp; Usage</button>'
+   +'<div style="display:flex;gap:6px"><a class="sl-bl-btn" href="https://betlab.sportslabshq.com/?sport=ncaamb&amp;addleg='+encodeURIComponent((p.aid||p.nm)+"|"+p.mk)+'" target="_blank" rel="noopener">➕ Bet Lab Slip</a><button type="button" class="sl-tail-btn" data-cbb-tail="'+E(p.id)+'">📸 Card</button></div>'
+   +'</div></div>';
+ }
+
+ function tab(R){
+  return '<div class="card wrap" style="padding:0"><table><tr><th>Player</th><th>Role</th><th>Proj Min</th><th>USG%</th><th>Matchup</th><th>Market</th><th>Line</th><th>Our Proj</th><th>Ours</th><th>Fair</th><th>Edge</th><th>Best</th></tr>'
+   +R.map(function(p){
+    var po=p.side==="Over"?p.ours:(1-p.ours),pf=p.side==="Over"?p.fair:(1-p.fair);
+    return '<tr><td>'+nmLink(p)+' <span class="mut sm">'+E(p.ab)+'</span></td><td>'+CBB.roleBadge(p)+'</td><td><b>'+p.proj_min+'</b></td><td>'+p.usg+'%</td><td class="sm mut">'+E(p.matchup)+'</td><td><b>'+E(p.mk)+'</b></td><td>'+E(p.side)+' '+p.line+'</td><td><b>'+p.proj+'</b></td><td>'+CBB.pc(po)+'</td><td>'+CBB.pc(pf)+'</td><td>'+CBB.edge(p.edge)+'</td><td>'+(p.best?CBB.am(p.best[0])+' '+E(p.best[1]):'—')+'</td></tr>';
+   }).join("")+'</table></div>';
+ }
+
+ function draw(){
+  renderRibs();
+  var R=rows();
+  out.innerHTML=R.length?(L==="cards"?'<div class="gl">'+R.slice(0,120).map(card).join("")+'</div>':tab(R.slice(0,200))):'<div class="card mut">No player props match these filters.</div>';
+  lay.querySelectorAll("button").forEach(function(b){b.classList.toggle("on",b.dataset.l===L)});
+ }
+
+ CBB.kellyBar(document.getElementById("kbar"),draw);
+ document.addEventListener("click",function(e){
+  var tb=e.target.closest("[data-cbb-tail]");
+  if(!tb)return;
+  e.stopPropagation();
+  var k=tb.getAttribute("data-cbb-tail");
+  var p=P.find(function(x){return x.id===k});
+  if(p&&window.SLTailCard){
+   var po=p.side==="Over"?p.ours:(1-p.ours),pf=p.side==="Over"?p.fair:(1-p.fair);
+   SLTailCard.show({
+    hub:"CBB HUB · PLAYER PROPS",
+    title:p.nm+" ("+p.ab+" "+p.pos+" · "+p.role+")",
+    sub:p.side+" "+p.line+" "+p.mk+" · Proj "+p.proj+" · "+p.proj_min+" MIN / "+p.usg+"% USG",
+    rows:[{player:p.nm,market:p.mk,line:p.line,meta:p.why,rightTop:p.best?CBB.am(p.best[0])+" ("+p.best[1]+")":"—",rightBot:"Edge "+(p.edge>=0?"+":"")+(p.edge*100).toFixed(1)+"%"}],
+    footerLeft:"Our Model: "+CBB.pc(po)+" vs Fair "+CBB.pc(pf),
+    footerRight:"cbblab.sportslabshq.com · 21+",
+    filename:"cbblab-"+p.nm.toLowerCase().replace(/[^a-z0-9]+/g,"-")+".png"
+   });
+  }
+ });
+ lay.onclick=function(e){if(e.target.dataset.l){L=e.target.dataset.l;draw()}};
+ q.oninput=rl.onchange=fl.onchange=draw;
+ draw();
+});</script></body></html>
