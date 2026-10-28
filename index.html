@@ -1,26 +1,273 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matchups, Player Props &amp; Most Improved · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}</style></head><body><div class="w"><h2 style="margin-top:14px">CBB Matchups, Player Props &amp; Most Improved · 2026-27</h2><p class="mut sm" id="sub"></p>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matchups, Upset Radar, 10-Game Rolling Segments &amp; Prop Hurdles · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css"><script src="sl-sports.js"></script><script src="navcfg.js"></script><script src="cbb.js"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}
+.hub-nav-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;margin:10px 0;scrollbar-width:thin}
+.hub-nav-tabs button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:7px 13px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+.hub-nav-tabs button.on{background:#38d0f0;color:#041624;border-color:#38d0f0}
+.upset-card{background:linear-gradient(145deg,rgba(255,93,108,.1),var(--panel2) 70%);border:1px solid rgba(255,93,108,.45);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.upset-card.watch{border-color:rgba(245,158,11,.45);background:linear-gradient(145deg,rgba(245,158,11,.08),var(--panel2) 70%)}
+.seg-pill{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;background:#13233f;border:1px solid #2b4570;color:#7dd3fc}
+.sim-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
+@media(max-width:720px){.sim-grid{grid-template-columns:1fr}}
+</style></head><body><div class="w"><h2 style="margin-top:14px">🏀 CBB Hub · Matchups, Upset Radar, 10-Game Rolling Segments &amp; Usage Prop Hurdles · 2026-27</h2><p class="mut sm" id="sub"></p>
+
+<div class="hub-nav-tabs" id="main-tabs" role="tablist">
+  <button type="button" class="on" data-mt="overview">🏀 Slate, Upset Radar &amp; 365 Teams</button>
+  <button type="button" data-mt="upsets">🚨 Calculated Upset Alert Bin</button>
+  <button type="button" data-mt="segments">📆 Rolling 10-Game Season Segments (G1–10 → G21–30)</button>
+  <button type="button" data-mt="hurdles">🔥 Team Usage Rate &amp; Prop Hurdles Tracker</button>
+  <button type="button" data-mt="class">🎓 Top Freshmen vs. 🏆 Returning Upperclassmen &amp; Transfers</button>
+  <button type="button" data-mt="sim">⚡ Interactive Matchup Simulator &amp; Conference Power Matrix</button>
+</div>
+
 <div class="grib" id="qrib" aria-label="Style and Top 25 filters"></div>
 <div class="grib" id="crib" aria-label="Quick conference filter"></div>
-<div class="ctl"><select class="v2" id="cf"><option value="">All D-I</option></select> <label class="sm"><input type="checkbox" id="pd"> show teams with rosters not yet updated</label> <a href="props.html" class="chip" style="text-decoration:none;margin-left:auto">🏀 Player Props (686) →</a> <a href="players.html" class="chip" style="text-decoration:none">📋 Starters, Minutes &amp; Usage →</a></div>
+<div class="ctl" id="top-ctl"><input class="v2" id="q-search" placeholder="Search team, player, conference…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px"><select class="v2" id="cf"><option value="">All D-I Conferences</option></select> <label class="sm"><input type="checkbox" id="pd"> show pending rosters</label> <a href="props.html" class="chip" style="text-decoration:none;margin-left:auto">🏀 Player Props (762) →</a> <a href="players.html" class="chip" style="text-decoration:none">📋 Starters, Minutes &amp; Usage →</a></div>
+
+<div id="tab-out"></div>
 <div id="gm-out"></div>
 <div id="out"></div>
-<footer>Projected change = our roster-based projection for 2026-27 minus last season's adjusted net rating (points per 100 possessions vs an average D-I team). Tempo (AdjT), efficiency (AdjO/AdjD), projected starters, minutes, usage rate (USG%), and Four-Factors style tags use preseason efficiency priors and returning/incoming D-I player rates. Ratings: barttorvik.com. Built only from last season's results and this offseason's roster moves; see <a href="method.html">Method</a>. Typical error ±5.7 pts. This is a projection, not a guarantee.</footer></div>
+<footer>Projected change = our roster-based projection for 2026-27 minus last season's adjusted net rating (points per 100 possessions vs an average D-I team). Tempo (AdjT), efficiency (AdjO/AdjD), projected starters, minutes, usage rate (USG%), Rolling 10-Game Season Segments, Calculated Upset Radar, and Four-Factors style tags use preseason efficiency priors and returning/incoming D-I player rates. Ratings: barttorvik.com. Built only from last season's results and this offseason's roster moves; see <a href="method.html">Method</a>. Typical error ±5.7 pts. This is a projection, not a guarantee.</footer></div>
 <script>var S=function(v){return v==null?"—":(v>0?"+":"")+v.toFixed(1)},P=function(v){return v==null?"—":Math.round(v*100)+"%"},C=function(v){return v>0?"pos":v<0?"neg":""};</script>
-<script>CBB.data(function(D){var E=CBB.E,QF="",ALLG=false;sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked by projected change from last season, plus "+(D.props||[]).length+" player prop projections, projected starters, minutes & usage rates. Updated "+D.built+" · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+<script>CBB.data(function(D){
+var E=CBB.E,QF="",MT="overview",ALLG=false,CLS_TAB="all",SEG_ACTIVE="g1_10",HURDLE_CAT="";
+var SIM_A=11,SIM_B=314,SIM_NEUT=true;
+if(location.hash==="#upsets")MT="upsets";
+else if(location.hash==="#segments")MT="segments";
+else if(location.hash==="#hurdles")MT="hurdles";
+else if(location.hash==="#class")MT="class";
+else if(location.hash==="#sim")MT="sim";
+
+sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked with Rolling 10-Game Season Segments, "+(D.upset_radar||[]).length+" Calculated Upset Alerts, "+(D.prop_hurdles||[]).length+" High-Usage Prop Hurdles, and "+(D.props||[]).length+" player prop projections. Updated "+D.built+" · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
 var confs=[...new Set(D.teams.map(r=>r.conf))].sort();
 cf.innerHTML+=confs.map(c=>"<option>"+E(c)+"</option>").join("");
 var topConfs=["","SEC","Big Ten","Big 12","ACC","Big East","Mountain West","WCC","A-10","American"];
+
 function renderRibs(){
  var qopts=[["","All Teams"],["top25","🏆 Preseason Top 25"],["tempo","⚡ Tempo Track Meet"],["three","🎯 3PT Perimeter Funnel"],["orb","💪 Glass / ORB Bully"],["press","🔒 Turnover Press"]];
  qrib.innerHTML=qopts.map(x=>'<button type="button" data-qf="'+x[0]+'" class="'+(QF==x[0]?"on":"")+'">'+x[1]+'</button>').join("");
  qrib.querySelectorAll("button").forEach(b=>b.onclick=function(){QF=b.getAttribute("data-qf")||"";draw()});
  crib.innerHTML=topConfs.filter(c=>!c||confs.includes(c)).map(c=>'<button type="button" data-cf="'+E(c)+'" class="'+(cf.value==c?"on":"")+'">'+(c||"All Conferences")+'</button>').join("");
  crib.querySelectorAll("button").forEach(b=>b.onclick=function(){cf.value=b.getAttribute("data-cf")||"";draw()});
+ document.querySelectorAll("#main-tabs button").forEach(b=>b.classList.toggle("on",b.dataset.mt===MT));
 }
+
 function hasBadge(arr,k){return (arr||[]).some(b=>b.kind==k)}
+
+function renderUpsetBin(limit){
+ var U=(D.upset_radar||[]).filter(u=>!cf.value||u.dog_conf===cf.value||u.fav_conf===cf.value);
+ var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
+ if(q)U=U.filter(u=>(u.dog+" "+u.fav+" "+u.dog_conf+" "+u.fav_conf).toLowerCase().includes(q));
+ var list=limit?U.slice(0,limit):U;
+ if(!list.length)return '<div class="card mut">No upset alerts match the current filter.</div>';
+ return '<div class="card" style="margin-bottom:14px;border-color:rgba(255,93,108,.4)">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+  +'<div><h3 style="margin:0">🚨 CBB Calculated Upset Alert Bin ("Upset Radar" · '+U.length+' Spotlights)</h3>'
+  +'<span class="mut sm">Flagged where home/neutral court splits, tempo/3PT/ORB style clashes, and Segment 1 (Games 1–10) veteran continuity give the underdog an outright win or cover edge · Ratings: barttorvik.com</span></div>'
+  +(limit&&U.length>limit?'<button type="button" class="chip" id="btn-all-upsets">View All '+U.length+' Upset Alerts →</button>':'')
+  +'</div>'
+  +'<div class="gl" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">'+list.map(function(u){
+   var wDog=Math.round(u.dog_win_prob*100),wMkt=Math.round(u.mkt_dog_prob*100);
+   var isHigh=u.upset_score>=76;
+   return '<div class="upset-card '+(isHigh?"":"watch")+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+    +'<span class="role-pill '+(isHigh?"tr":"bn")+'" style="'+(isHigh?"background:#ff5d6c26;color:#fda4af;border-color:#ff5d6c77":"")+'">'+E(u.tier)+' · Score '+u.upset_score+'/100</span>'
+    +'<span class="mut sm">'+CBB.fmtT(u.start)+(u.neutral?" · Neutral":"")+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">'
+    +'<div>'+(u.dog_rk?'<span class="ap-tag">#'+u.dog_rk+'</span>':'')+CBB.logo(u.dog_id,20)+' <a href="team.html?id='+u.dog_id+'" style="color:#fff;font-weight:900;font-size:15px">'+E(u.dog)+'</a> <span class="mut sm">('+E(u.dog_conf)+')</span></div>'
+    +'<div style="text-align:right"><b class="pos" style="font-size:15px">'+wDog+'% Win</b> <span class="mut sm">(Fair '+CBB.am(u.fair_dog_ml)+')</span></div></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px">'
+    +'<span class="mut">vs '+(u.fav_rk?'<span class="ap-tag">#'+u.fav_rk+'</span>':'')+CBB.logo(u.fav_id,16)+' <a href="team.html?id='+u.fav_id+'" style="color:inherit;font-weight:700">'+E(u.fav)+'</a> ('+E(u.fav_conf)+')</span>'
+    +'<span>SL Line: <b>'+E(u.dog_ab)+' '+E(u.sl_spread_dog)+'</b> <span class="mut sm">(Mkt '+E(u.mkt_spread_dog)+')</span></span></div>'
+    +'<div style="background:#0a1324;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:11.5px">'
+    +u.triggers.map(function(tr){return '<div style="padding:1.5px 0">• '+E(tr)+'</div>'}).join("")
+    +'</div>'
+    +(u.dog_star?'<div class="mut sm" style="display:flex;justify-content:space-between"><span>🔑 Dog Catalyst: <a href="#" class="plink" data-cbb-player="'+E(u.dog_star.id||u.dog_star.n)+'" data-cbb-tid="'+u.dog_id+'"><b>'+E(u.dog_star.n)+'</b></a> ('+u.dog_star.pts+' PPG · '+u.dog_star.usg+'% USG)</span><span>Tempo: '+u.pace+' poss</span></div>':'')
+    +'</div>';
+  }).join("")+'</div></div>';
+}
+
+function renderSegmentsView(){
+ var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
+ var T=D.teams.filter(function(t){
+  if(cf.value&&t.conf!==cf.value)return false;
+  if(!pd.checked&&t.status!=="ok")return false;
+  if(QF==="top25"&&!t.ap)return false;
+  if(q&&(t.team+" "+t.conf+" "+(t.exp_meta&&t.exp_meta.seg_profile||"")).toLowerCase().indexOf(q)<0)return false;
+  return true;
+ });
+ T.sort(function(a,b){
+  var sa=((a.exp_meta&&a.exp_meta.segments&&a.exp_meta.segments[SEG_ACTIVE])||{}).em||a.proj||0;
+  var sb=((b.exp_meta&&b.exp_meta.segments&&b.exp_meta.segments[SEG_ACTIVE])||{}).em||b.proj||0;
+  return sb-sa;
+ });
+ return '<div class="card" style="margin-bottom:14px">'
+  +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">'
+  +'<div><h3 style="margin:0">📆 Rolling 10-Game Season Segmentation Engine (Games 1–10 → Games 11–20 → Games 21–30)</h3>'
+  +'<div class="mut sm" style="margin-top:3px">College basketball teams evolve in distinct 10-game blocks. In <b>Segment 1 (Games 1–10)</b>, veteran continuity rules while freshman/portal-heavy rosters calibrate (preseason prior decays 100% → 45%). In <b>Segment 2 (Games 11–20)</b>, conference play tightens rotations to 8 men (+3.5% starter minutes). By <b>Segment 3 (Games 21–30)</b>, high-ceiling freshmen reach peak efficiency and prior weight drops to 0%.</div></div>'
+  +'<div class="grib" style="margin:0">'
+  +[["g1_10","1️⃣ Segment 1: Games 1–10 (Non-Conf Calibration)"],["g11_20","2️⃣ Segment 2: Games 11–20 (Conf Opener & 8-Man Rot)"],["g21_30","3️⃣ Segment 3: Games 21–30 (Late Conf & March Push)"]].map(function(x){
+   return '<button type="button" data-seg-btn="'+x[0]+'" class="'+(SEG_ACTIVE===x[0]?"on":"")+'">'+x[1]+'</button>';
+  }).join("")
+  +'</div></div>'
+  +'<div class="wrap" style="margin-top:10px"><table><tr><th>#</th><th>Team</th><th>Conf</th><th>10-Game Trajectory Archetype</th><th>Starters (FR / Vet / Portal)</th><th>Seg 1 (G1–10) Proj</th><th>Seg 2 (G11–20) Proj</th><th>Seg 3 (G21–30) Peak</th><th>G1→G30 Delta</th><th>Start 5 Min Share</th><th>Top-2 Usage</th></tr>'
+  +T.slice(0,120).map(function(t,i){
+   var em=t.exp_meta||{},segs=em.segments||{};
+   var s1=(segs.g1_10||{}).em||t.proj,s2=(segs.g11_20||{}).em||t.proj,s3=(segs.g21_30||{}).em||t.proj;
+   var d13=round1(s3-s1);
+   return '<tr><td>'+(i+1)+'</td><td>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+CBB.logo(t.id,18)+' <a href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b></a></td><td>'+E(t.conf)+'</td><td><span class="seg-pill">'+E(em.seg_profile||"Balanced")+'</span></td><td>'+em.st5_fr+' FR · '+em.st5_vet+' Vet · '+em.st5_tr+' Tr</td><td style="'+(SEG_ACTIVE==="g1_10"?"font-weight:900;color:#38d0f0":"")+'">'+S(s1)+'</td><td style="'+(SEG_ACTIVE==="g11_20"?"font-weight:900;color:#38d0f0":"")+'">'+S(s2)+'</td><td style="'+(SEG_ACTIVE==="g21_30"?"font-weight:900;color:#8ee04a":"")+'"><b>'+S(s3)+'</b></td><td class="'+(d13>=1.5?"pos":"")+'">'+(d13>=0?"+":"")+d13.toFixed(1)+'</td><td>'+(em.st5_min_pct||75)+'%</td><td><span class="usg-pill">'+(em.top2_usg||24)+'% USG</span></td></tr>';
+  }).join("")+'</table></div></div>';
+}
+function round1(x){return Math.round((x||0)*10)/10}
+
+function renderHurdlesView(){
+ var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
+ var H=(D.prop_hurdles||[]).filter(function(h){
+  if(cf.value&&h.conf!==cf.value)return false;
+  if(HURDLE_CAT&&h.cat!==HURDLE_CAT)return false;
+  if(QF==="top25"&&!h.ap)return false;
+  if(q&&(h.n+" "+h.team+" "+h.hurdle+" "+h.conf).toLowerCase().indexOf(q)<0)return false;
+  return true;
+ });
+ return '<div class="card" style="margin-bottom:14px">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+  +'<div><h3 style="margin:0">🔥 Team Usage Rate Leaders &amp; "Prop Hurdles That Keep Rolling" ('+H.length+')</h3>'
+  +'<span class="mut sm">High-minute, high-usage alpha options projected to clear their milestone statistical hurdles at a 70%–92% clip · Tap any player for full scouting &amp; efficiency splits</span></div>'
+  +'<div class="grib" style="margin:0">'
+  +[["","All Hurdles"],["PTS","🏀 10+ / 15+ Points"],["REB","💪 6+ Rebounds"],["AST","🎯 4+ Assists"],["PRA","⚡ 22+ PRA"],["3PM","🏹 2+ 3PM"]].map(function(x){
+   return '<button type="button" data-hcat="'+x[0]+'" class="'+(HURDLE_CAT===x[0]?"on":"")+'">'+x[1]+'</button>';
+  }).join("")
+  +'</div></div>'
+  +'<div class="wrap" style="margin-top:8px"><table><tr><th>#</th><th>Player</th><th>Class · Origin</th><th>Team &amp; Conf</th><th>Proj Min (Share)</th><th>Usage Rate (USG%)</th><th>Rolling Prop Hurdle</th><th>Our Proj</th><th>Hit Prob (Fair)</th><th>Est L10 / Prior Hit</th><th>Full P / R / A</th></tr>'
+  +H.slice(0,110).map(function(h,i){
+   return '<tr><td>'+(i+1)+'</td><td>'+CBB.head(h.id,h.n,h.hs,"#38d0f0",28)+' <a href="#" class="plink" data-cbb-player="'+E(h.id||h.n)+'" data-cbb-tid="'+h.tid+'" style="color:inherit;font-weight:800">'+E(h.n)+'</a>'+(h.nba_tier?' <span class="nba-pill">🏀 '+E(h.nba_tier)+'</span>':'')+'</td>'
+    +'<td><b>'+E(h.yr_short)+'</b> · <span class="mut sm">'+E(h.origin)+(h.prev_team?' ('+E(h.prev_team)+')':'')+'</span></td>'
+    +'<td>'+(h.ap?'<span class="ap-tag">#'+h.ap+'</span>':'')+CBB.logo(h.tid,16)+' <a href="team.html?id='+h.tid+'" style="color:inherit">'+E(h.team)+'</a> <span class="mut sm">'+E(h.conf)+'</span></td>'
+    +'<td><b>'+h.proj_min+'m</b> <span class="mut sm">('+h.min_share+'%)</span></td>'
+    +'<td><span class="usg-pill" style="color:#fcd34d;border-color:#f59e0b66">'+h.usg+'% USG</span></td>'
+    +'<td><span class="role-pill st" style="font-size:11px">'+E(h.hurdle)+'</span></td>'
+    +'<td><b class="pos">'+h.proj+'</b> <span class="mut sm">(vs '+h.line+')</span></td>'
+    +'<td><b class="pos">'+Math.round(h.p_hit*100)+'%</b> <span class="mut sm">('+CBB.am(h.fair_odds)+')</span></td>'
+    +'<td><b>'+E(h.l10_est)+'</b> <span class="mut sm">· '+E(h.szn_est)+'</span></td>'
+    +'<td>'+h.proj_pts+' / '+h.proj_reb+' / '+h.proj_ast+'</td></tr>';
+  }).join("")+'</table></div></div>';
+}
+
+function renderClassTracker(){
+ var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
+ var allP=[];
+ D.teams.forEach(function(t){
+  (t.rot||[]).forEach(function(p){
+   if((p.proj_min||0)>=18.0||p.nba_prospect||p.is_star)allP.push(p);
+  });
+ });
+ var flt=allP.filter(function(p){
+  if(cf.value&&p.conf!==cf.value)return false;
+  if(QF==="top25"&&!p.ap)return false;
+  var isFr=(p.yr_short==="FR"||p.origin==="Freshman");
+  var isVet=(p.yr_short==="JR"||p.yr_short==="SR");
+  if(CLS_TAB==="fr"&&!isFr)return false;
+  if(CLS_TAB==="vet"&&!isVet)return false;
+  if(CLS_TAB==="tr"&&p.origin!=="Transfer")return false;
+  if(q&&(p.n+" "+p.team+" "+p.conf+" "+(p.prev_team||"")+" "+(p.nba_note||"")).toLowerCase().indexOf(q)<0)return false;
+  return true;
+ });
+ flt.sort(function(a,b){
+  return ((b.proj_pts||0)+(b.nba_tier==="NBA Lottery"?6:0))-((a.proj_pts||0)+(a.nba_tier==="NBA Lottery"?6:0));
+ });
+
+ return '<div class="card" style="margin-bottom:14px">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+  +'<div><h3 style="margin:0">🎓 Top Freshmen vs. 🏆 Returning Upperclassmen &amp; Veteran Transfers ('+flt.length+')</h3>'
+  +'<span class="mut sm">Compare high-ceiling incoming freshmen (who surge in Games 11–30) against battle-tested Juniors, Seniors &amp; D-I Transfers with proven usage floors</span></div>'
+  +'<div class="grib" style="margin:0">'
+  +[["all","All Impact Players"],["fr","🎓 Top Freshmen (High-Usage Recruits)"],["vet","🏆 Upperclassmen (JR / SR Veterans)"],["tr","⇄ High-Impact Portal Transfers"]].map(function(x){
+   return '<button type="button" data-cls-tab="'+x[0]+'" class="'+(CLS_TAB===x[0]?"on":"")+'">'+x[1]+'</button>';
+  }).join("")
+  +'</div></div>'
+  +'<div class="wrap" style="margin-top:8px"><table><tr><th>#</th><th>Player</th><th>Class</th><th>Origin / Prior School</th><th>Team &amp; Conf</th><th>Badges &amp; Draft Tier</th><th>Proj MIN</th><th>USG%</th><th>Proj PPG</th><th>Proj RPG</th><th>Proj APG</th><th>Proj PRA</th><th>G1–10 vs G11–30 Trajectory</th></tr>'
+  +flt.slice(0,120).map(function(p,i){
+   var isFr=(p.yr_short==="FR"||p.origin==="Freshman");
+   var traj=isFr?'<span class="seg-pill">📈 G1–10 Calibration → +14% G11–30 Surge</span>':(p.origin==="Transfer"?'<span class="seg-pill">⚡ Portal Alpha · Day-1 Usage Floor</span>':'<span class="role-pill st">🛡️ Proven Multi-Year Floor</span>');
+   return '<tr><td>'+(i+1)+'</td><td>'+CBB.head(p.id,p.n,p.hs,isFr?"#a855f7":"#38d0f0",28)+' <a href="#" class="plink" data-cbb-player="'+E(p.id||p.n)+'" data-cbb-tid="'+p.tid+'" style="color:inherit;font-weight:800">'+E(p.n)+'</a></td>'
+    +'<td><b>'+E(p.yr_short||p.yr)+'</b></td>'
+    +'<td>'+E(p.origin)+(p.prev_team?' <span class="mut sm">('+E(p.prev_team)+')</span>':'')+'</td>'
+    +'<td>'+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+CBB.logo(p.tid,16)+' <a href="team.html?id='+p.tid+'" style="color:inherit">'+E(p.team)+'</a> <span class="mut sm">'+E(p.conf)+'</span></td>'
+    +'<td>'+CBB.roleBadge(p)+'</td>'
+    +'<td><b>'+p.proj_min+'</b></td>'
+    +'<td><span class="usg-pill">'+p.usg+'%</span></td>'
+    +'<td><b>'+p.proj_pts+'</b></td>'
+    +'<td>'+p.proj_reb+'</td>'
+    +'<td>'+p.proj_ast+'</td>'
+    +'<td><b class="pos">'+p.proj_pra+'</b></td>'
+    +'<td>'+traj+'</td></tr>';
+  }).join("")+'</table></div></div>';
+}
+
+function renderSimAndConf(){
+ var sortedTeams=D.teams.slice().sort((a,b)=>(a.ap||999)-(b.ap||999)||a.team.localeCompare(b.team));
+ var tA=D.teams.find(x=>x.id==SIM_A)||sortedTeams[0];
+ var tB=D.teams.find(x=>x.id==SIM_B)||sortedTeams[1];
+ var pace=round1(0.5*((tA.adjT||68.5)+(tB.adjT||68.5)));
+ var hca=SIM_NEUT?0.0:3.4;
+ var emA=0.65*(tA.proj||0)+0.35*(tA.adjEM||0);
+ var emB=0.65*(tB.proj||0)+0.35*(tB.adjEM||0);
+ var marginB=round1((emB-emA)*(pace/68.5)*0.85+hca);
+ var spTxt=marginB===0?"PK":marginB>0?(tB.team+" -"+marginB):(tA.team+" -"+Math.abs(marginB));
+ var pB=Math.min(0.98,Math.max(0.02,0.5*(1+ erfApprox(marginB/(10.8*Math.SQRT2)))));
+ var pA=1-pB;
+ var expTotal=round1(((0.5*(tA.adjO+tB.adjD)+0.5*(tB.adjO+tA.adjD))*(pace/100)));
+
+ var CM=D.conf_matrix||[];
+
+ return '<div class="card" style="margin-bottom:14px;border-color:#38d0f066">'
+  +'<h3 style="margin:0 0 6px">⚡ Interactive D-I Matchup &amp; Neutral/Home-Court Simulator (All 365 Teams)</h3>'
+  +'<div class="mut sm" style="margin-bottom:10px">Select any two Division I teams to simulate projected spread, total, win probability, tempo clash, and 10-game segment comparison · Ratings: barttorvik.com</div>'
+  +'<div class="ctl" style="margin-bottom:12px">'
+  +'<select class="v2" id="sim-a">'+sortedTeams.map(t=>'<option value="'+t.id+'" '+(t.id==tA.id?"selected":"")+'>'+(t.ap?"#"+t.ap+" ":"")+E(t.team)+' ('+E(t.conf)+' · Proj '+S(t.proj)+')</option>').join("")+'</select>'
+  +'<span style="font-weight:900;color:#38d0f0">VS</span>'
+  +'<select class="v2" id="sim-b">'+sortedTeams.map(t=>'<option value="'+t.id+'" '+(t.id==tB.id?"selected":"")+'>'+(t.ap?"#"+t.ap+" ":"")+E(t.team)+' ('+E(t.conf)+' · Proj '+S(t.proj)+')</option>').join("")+'</select>'
+  +'<label class="sm" style="display:inline-flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="sim-neut" '+(SIM_NEUT?"checked":"")+'> Neutral Court (uncheck for '+E(tB.ab)+' Home +3.4 pts)</label>'
+  +'</div>'
+  +'<div class="sim-grid">'
+  +'<div class="card" style="margin:0;background:var(--panel2)">'
+  +'<div style="font-size:16px;font-weight:900">'+(tA.ap?'<span class="ap-tag">#'+tA.ap+'</span>':'')+CBB.logo(tA.id,22)+' <a href="team.html?id='+tA.id+'" style="color:inherit">'+E(tA.team)+'</a> <span class="mut sm">('+E(tA.conf)+')</span></div>'
+  +'<div class="mut sm" style="margin-top:4px">Proj Net: <b>'+S(tA.proj)+'</b> · Torvik O/D: <b>'+tA.adjO.toFixed(1)+' / '+tA.adjD.toFixed(1)+'</b> · AdjT: <b>'+tA.adjT.toFixed(1)+'</b></div>'
+  +'<div class="mut sm">Seg 1 (G1–10): <b>'+S(((tA.exp_meta||{}).segments||{}).g1_10&&tA.exp_meta.segments.g1_10.em)+'</b> → Seg 3 (G21–30): <b class="pos">'+S(((tA.exp_meta||{}).segments||{}).g21_30&&tA.exp_meta.segments.g21_30.em)+'</b></div>'
+  +CBB.badgesHtml(tA.badges)
+  +'</div>'
+  +'<div style="text-align:center;padding:8px 14px;background:#0a1324;border:1px solid var(--line);border-radius:12px">'
+  +'<div class="mut sm" style="text-transform:uppercase;font-weight:800">SL Projected Line</div>'
+  +'<div style="font-size:20px;font-weight:900;color:#8ee04a;margin:3px 0">'+E(spTxt)+'</div>'
+  +'<div style="font-size:13px;font-weight:800">Total: <b>'+expTotal+'</b> · Tempo: <b>'+pace+' poss</b></div>'
+  +'<div class="mut sm" style="margin-top:4px">Win Prob: <b>'+E(tA.ab)+' '+Math.round(pA*100)+'%</b> · <b>'+E(tB.ab)+' '+Math.round(pB*100)+'%</b></div>'
+  +'</div>'
+  +'<div class="card" style="margin:0;background:var(--panel2)">'
+  +'<div style="font-size:16px;font-weight:900">'+(tB.ap?'<span class="ap-tag">#'+tB.ap+'</span>':'')+CBB.logo(tB.id,22)+' <a href="team.html?id='+tB.id+'" style="color:inherit">'+E(tB.team)+'</a> <span class="mut sm">('+E(tB.conf)+')</span></div>'
+  +'<div class="mut sm" style="margin-top:4px">Proj Net: <b>'+S(tB.proj)+'</b> · Torvik O/D: <b>'+tB.adjO.toFixed(1)+' / '+tB.adjD.toFixed(1)+'</b> · AdjT: <b>'+tB.adjT.toFixed(1)+'</b></div>'
+  +'<div class="mut sm">Seg 1 (G1–10): <b>'+S(((tB.exp_meta||{}).segments||{}).g1_10&&tB.exp_meta.segments.g1_10.em)+'</b> → Seg 3 (G21–30): <b class="pos">'+S(((tB.exp_meta||{}).segments||{}).g21_30&&tB.exp_meta.segments.g21_30.em)+'</b></div>'
+  +CBB.badgesHtml(tB.badges)
+  +'</div>'
+  +'</div></div>'
+  +'<div class="card">'
+  +'<h3 style="margin:0 0 6px">🏆 2026-27 Conference Power Matrix &amp; NCAA Tournament Bid Projections</h3>'
+  +'<div class="wrap"><table><tr><th>#</th><th>Conference</th><th>Teams</th><th>Avg Proj Net</th><th>Avg Tempo (AdjT)</th><th>Top-25 Teams</th><th>Proj Tourney Bids</th><th>Projected Conference Favorite</th><th>Fastest Tempo Team</th><th>Stingiest Defense (AdjD)</th></tr>'
+  +CM.map(function(c,i){
+   return '<tr><td>'+(i+1)+'</td><td><b>'+E(c.conf)+'</b></td><td>'+c.teams_count+'</td><td class="'+(c.avg_em>=0?"pos":"neg")+'"><b>'+S(c.avg_em)+'</b></td><td>'+c.avg_tempo+'</td><td>'+(c.top25_count||'—')+'</td><td><span class="role-pill st">'+c.proj_bids+' Bids</span></td>'
+    +'<td>'+(c.favorite.ap?'<span class="ap-tag">#'+c.favorite.ap+'</span>':'')+CBB.logo(c.favorite.id,16)+' <a href="team.html?id='+c.favorite.id+'"><b>'+E(c.favorite.team)+'</b></a> ('+S(c.favorite.proj)+')</td>'
+    +'<td><a href="team.html?id='+c.fastest.id+'" style="color:inherit">'+E(c.fastest.team)+'</a> <span class="mut sm">('+c.fastest.adjT.toFixed(1)+')</span></td>'
+    +'<td><a href="team.html?id='+c.best_def.id+'" style="color:inherit">'+E(c.best_def.team)+'</a> <span class="mut sm">('+c.best_def.adjD.toFixed(1)+')</span></td></tr>';
+  }).join("")+'</table></div></div>';
+}
+function erfApprox(x){
+ var s=x<0?-1:1;x=Math.abs(x);
+ var t=1/(1+0.3275911*x);
+ var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+ return s*y;
+}
+
 function drawGames(){
- var G=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
  var el=document.getElementById("gm-out");
+ if(MT!=="overview"){el.innerHTML="";return}
+ var G=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
  if(!G.length){el.innerHTML="";return}
  var show=ALLG?G:G.slice(0,6);
  el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Opening-Week Featured Matchups, Starters &amp; Player Props ('+G.length+')</h3><span class="mut sm">Nov 1–2 tip-off slate · Projected spread, tempo (possessions), starting lineups &amp; top player prop projections · Ratings: barttorvik.com</span></div><div style="display:flex;gap:6px"><a href="props.html" class="chip" style="text-decoration:none">All '+(D.props||[]).length+' Props →</a>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div></div><div class="gl">'+show.map(function(g){
@@ -39,20 +286,87 @@ function drawGames(){
  }).join("")+'</div></div>';
  var tg=document.getElementById("gm-tog");if(tg)tg.onclick=function(){ALLG=!ALLG;drawGames()};
 }
+
 function draw(){
  renderRibs();
+ var tabOut=document.getElementById("tab-out");
+ if(MT==="upsets"){
+  tabOut.innerHTML=renderUpsetBin(0);
+  document.getElementById("gm-out").innerHTML="";
+  out.innerHTML="";
+  return;
+ }
+ if(MT==="segments"){
+  tabOut.innerHTML=renderSegmentsView();
+  document.getElementById("gm-out").innerHTML="";
+  out.innerHTML="";
+  bindSegBtns();
+  return;
+ }
+ if(MT==="hurdles"){
+  tabOut.innerHTML=renderHurdlesView();
+  document.getElementById("gm-out").innerHTML="";
+  out.innerHTML="";
+  bindHurdleBtns();
+  return;
+ }
+ if(MT==="class"){
+  tabOut.innerHTML=renderClassTracker();
+  document.getElementById("gm-out").innerHTML="";
+  out.innerHTML="";
+  bindClsBtns();
+  return;
+ }
+ if(MT==="sim"){
+  tabOut.innerHTML=renderSimAndConf();
+  document.getElementById("gm-out").innerHTML="";
+  out.innerHTML="";
+  bindSimBtns();
+  return;
+ }
+
+ // Overview tab: Top 6 Upset Alerts preview + Featured Opening-Week Matchups + 365-Team Table with 10-Game Segment & Lead Starter
+ tabOut.innerHTML=renderUpsetBin(6);
+ var btnAllU=document.getElementById("btn-all-upsets");
+ if(btnAllU)btnAllU.onclick=function(){MT="upsets";draw()};
  drawGames();
+ var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
  var r=D.teams.filter(function(t){
   if(cf.value&&t.conf!=cf.value)return false;
   if(!pd.checked&&t.status!="ok")return false;
   if(QF=="top25"&&!t.ap)return false;
   if(QF&&QF!="top25"&&!hasBadge(t.badges,QF))return false;
+  if(q&&(t.team+" "+t.conf+" "+t.ab).toLowerCase().indexOf(q)<0)return false;
   return true;
  });
- out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team &amp; Style Mismatches</th><th>Projected Lead Starter</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>AdjT</th><th>Torvik O / D</th><th>Ret min</th><th>Ret prod</th><th>In / Out</th></tr>'+r.map((t,i)=>{
+ out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team &amp; Style Mismatches</th><th>Projected Lead Starter &amp; Usage</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>G1–10 → G21–30</th><th>AdjT</th><th>Torvik O / D</th><th>Ret min</th><th>In / Out</th></tr>'+r.map((t,i)=>{
   var lead=(t.rot&&t.rot[0])?t.rot[0]:null;
-  var leadHtml=lead?'<a href="#" class="plink" data-cbb-player="'+E(lead.id||lead.n)+'" data-cbb-tid="'+t.id+'" style="color:inherit;font-weight:700">'+E(lead.n)+'</a> <span class="mut sm">('+lead.proj_min+'m · '+lead.usg+'% USG · '+lead.proj_pts+' PPG)</span>':'—';
-  return '<tr class="'+(t.status!="ok"?"pend":"")+'"><td>'+(t.status=="ok"?i+1:"·")+'</td><td>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+CBB.logo(t.id,18)+' <a href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b></a>'+(t.status!="ok"?' <span class="sm mut">roster pending</span>':'')+CBB.badgesHtml(t.badges)+'</td><td>'+leadHtml+'</td><td>'+E(t.conf)+'</td><td>'+S(t.net)+'</td><td>'+S(t.proj)+'</td><td class="'+C(t.chg)+'"><b>'+S(t.chg)+'</b></td><td>'+(t.adjT!=null?t.adjT.toFixed(1):"—")+'</td><td class="sm">'+(t.adjO!=null?t.adjO.toFixed(1)+" / "+t.adjD.toFixed(1):"—")+'</td><td>'+P(t.retMin)+'</td><td>'+P(t.retProd)+'</td><td>'+t.nIn+' / '+(t.nOut+t.nLeft)+'</td></tr>';
+  var leadHtml=lead?'<a href="#" class="plink" data-cbb-player="'+E(lead.id||lead.n)+'" data-cbb-tid="'+t.id+'" style="color:inherit;font-weight:700">'+E(lead.n)+'</a> <span class="mut sm">('+E(lead.yr_short||"")+' · '+lead.proj_min+'m · '+lead.usg+'% USG · '+lead.proj_pts+' PPG)</span>':'—';
+  var segs=(t.exp_meta&&t.exp_meta.segments)||{};
+  var s1=segs.g1_10?segs.g1_10.em:t.proj,s3=segs.g21_30?segs.g21_30.em:t.proj;
+  return '<tr class="'+(t.status!="ok"?"pend":"")+'"><td>'+(t.status=="ok"?i+1:"·")+'</td><td>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+CBB.logo(t.id,18)+' <a href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b></a>'+(t.status!="ok"?' <span class="sm mut">roster pending</span>':'')+CBB.badgesHtml(t.badges)+'</td><td>'+leadHtml+'</td><td>'+E(t.conf)+'</td><td>'+S(t.net)+'</td><td>'+S(t.proj)+'</td><td class="'+C(t.chg)+'"><b>'+S(t.chg)+'</b></td><td class="sm">'+S(s1)+' → <b class="pos">'+S(s3)+'</b></td><td>'+(t.adjT!=null?t.adjT.toFixed(1):"—")+'</td><td class="sm">'+(t.adjO!=null?t.adjO.toFixed(1)+" / "+t.adjD.toFixed(1):"—")+'</td><td>'+P(t.retMin)+'</td><td>'+t.nIn+' / '+(t.nOut+t.nLeft)+'</td></tr>';
  }).join("")+'</table></div>';
 }
-cf.onchange=pd.onchange=draw;draw()})</script></body></html>
+
+function bindSegBtns(){
+ document.querySelectorAll("[data-seg-btn]").forEach(function(b){b.onclick=function(){SEG_ACTIVE=b.getAttribute("data-seg-btn");draw()}});
+}
+function bindHurdleBtns(){
+ document.querySelectorAll("[data-hcat]").forEach(function(b){b.onclick=function(){HURDLE_CAT=b.getAttribute("data-hcat")||"";draw()}});
+}
+function bindClsBtns(){
+ document.querySelectorAll("[data-cls-tab]").forEach(function(b){b.onclick=function(){CLS_TAB=b.getAttribute("data-cls-tab");draw()}});
+}
+function bindSimBtns(){
+ var sa=document.getElementById("sim-a"),sb=document.getElementById("sim-b"),sn=document.getElementById("sim-neut");
+ if(sa)sa.onchange=function(){SIM_A=+sa.value;draw()};
+ if(sb)sb.onchange=function(){SIM_B=+sb.value;draw()};
+ if(sn)sn.onchange=function(){SIM_NEUT=sn.checked;draw()};
+}
+
+document.getElementById("main-tabs").onclick=function(e){
+ var b=e.target.closest("[data-mt]");
+ if(b){MT=b.dataset.mt;draw()}
+};
+cf.onchange=pd.onchange=document.getElementById("q-search").oninput=draw;
+draw()});</script></body></html>
