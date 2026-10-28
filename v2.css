@@ -66,3 +66,10 @@ header#v2bar .in{border:0;border-radius:0;background:none}
 /* nav-connect: 7 sports fit on phones; if still too narrow the bar scrolls sideways */
 @media(max-width:480px){#v2bar .sp{flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:1px}#v2bar .sp::-webkit-scrollbar{display:none}#v2bar .sp a{padding:6px 5px;flex:none}}
 @media(max-width:420px){#v2bar .sp a{padding:6px 3px}}
+
+#slbar{position:fixed;bottom:12px;right:14px;padding:6px 12px;font-size:12px;border-radius:99px;background:rgba(15,23,42,.94);border:1px solid #34d399;color:#ecfdf5;z-index:85;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+@media(min-width:1200px){
+  .w,#v2bar .in{max-width:1460px;padding-left:24px;padding-right:24px}
+  .pcards{grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:14px}
+  .gl,.grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+}
