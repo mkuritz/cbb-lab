@@ -191,7 +191,7 @@ function renderClassTracker(){
     +'<td><b>'+E(p.yr_short||p.yr)+'</b></td>'
     +'<td>'+E(p.origin)+(p.prev_team?' <span class="mut sm">('+E(p.prev_team)+')</span>':'')+'</td>'
     +'<td>'+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+CBB.logo(p.tid,16)+' <a href="team.html?id='+p.tid+'" style="color:inherit">'+E(p.team)+'</a> <span class="mut sm">'+E(p.conf)+'</span></td>'
-    +'<td>'+CBB.roleBadge(p)+'</td>'
+    +'<td>'+CBB.roleBadge(p)+CBB.ptags(p)+'</td>'
     +'<td><b>'+p.proj_min+'</b></td>'
     +'<td><span class="usg-pill">'+p.usg+'%</span></td>'
     +'<td><b>'+p.proj_pts+'</b></td>'
