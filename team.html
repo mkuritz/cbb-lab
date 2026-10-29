@@ -45,4 +45,31 @@ var prHtml=tProps.length?'<div class="card wrap"><div style="display:flex;justif
  var po=pr.side==="Over"?pr.ours:(1-pr.ours),pf=pr.side==="Over"?pr.fair:(1-pr.fair);
  return '<tr><td><a href="#" class="plink" data-cbb-player="'+E(pr.aid||pr.nm)+'" data-cbb-tid="'+t.id+'" style="color:inherit;font-weight:700">'+E(pr.nm)+'</a></td><td>'+CBB.roleBadge(pr)+'</td><td class="sm">'+pr.proj_min+' MIN · '+pr.usg+'%</td><td><b>'+E(pr.mk)+'</b></td><td>'+E(pr.side)+' '+pr.line+'</td><td><b>'+pr.proj+'</b></td><td>'+CBB.pc(po)+'</td><td>'+CBB.pc(pf)+'</td><td>'+CBB.edge(pr.edge)+'</td></tr>';
 }).join("")+'</table></div>':'';
+fetch("data/preseason_ref.json").then(function(r){return r.ok?r.json():null}).catch(function(){return null}).then(function(R){var x=R&&R.teams&&R.teams[String(t.id)];if(!x)return;
+ var ord=function(n){return n?CBB.ord?CBB.ord(n):n:"—"};
+ var cs=R.conferences&&R.conferences[x.conf]&&R.conferences[x.conf].proj_standings||[];
+ var five=(x.proj_starting_five||[]).map(function(f){return '<tr><td>'+E(f.pos)+'</td><td>'+(f.pid?'<a href="#" class="plink" data-cbb-player="'+E(f.pid)+'" data-cbb-tid="'+t.id+'" style="color:inherit;font-weight:700">'+E(f.name)+'</a>':E(f.name))+'</td><td class="sm mut">'+E(f.ht||"—")+' · '+E(f.cls||"—")+'</td></tr>'}).join("");
+ var mv=function(a,k){return a&&a.length?a.map(function(p){return E(p.name)+(p[k]?' <span class="mut sm">('+E(p[k])+')</span>':'')}).join("<br>"):'<span class="mut sm">None listed</span>'};
+ var pk=x.player_to_know,ls=pk&&pk.last_season||{};
+ var h='<div class="card" style="border-color:#38d0f055"><h3>📋 2026-27 Preseason Outlook</h3>'
+  +'<div class="cmp" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'
+  +'<div><div class="l">Proj. '+E(x.conf)+' Finish</div><b>'+(x.proj_conf_finish?ord(x.proj_conf_finish)+(cs.length?' of '+cs.length:''):'—')+'</b></div>'
+  +'<div><div class="l">Preseason Top 25</div><b>'+(x.preseason_top25?'#'+x.preseason_top25:'—')+'</b></div>'
+  +'<div><div class="l">Postseason Outlook</div><b>'+E(x.postseason_outlook||"—")+'</b></div>'
+  +'<div><div class="l">2025-26 Record</div><b>'+E(x.last_record||"—")+(x.last_conf_record?' ('+E(x.last_conf_record)+')':'')+'</b></div>'
+  +'<div><div class="l">2025-26 Efficiency Rank</div><b>'+(x.last_eff_rank?'#'+x.last_eff_rank:'—')+'</b></div>'
+  +'<div><div class="l">Head Coach</div><b>'+E(x.coach||"—")+'</b><div class="mut sm">'+(x.coach_season?ord(x.coach_season)+' season'+(x.first_year_coach?' · New coach':''):'')+'</div></div>'
+  +'</div>'
+  +'<div class="cmp" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:10px">'
+  +'<div><div class="l">Projected Starting Five'+(x.five_avg_ht_in?' · avg '+Math.floor(x.five_avg_ht_in/12)+"\'"+Math.round(x.five_avg_ht_in%12)+'"':'')+' · '+x.five_vets+' Sr/Gr · '+x.five_newcomers+' new</div><table>'+five+'</table></div>'
+  +'<div><div class="l">Key Additions</div><div class="sm">'+mv(x.key_additions,"from")+'</div></div>'
+  +'<div><div class="l">Key Losses</div><div class="sm">'+mv(x.key_losses,"to")+'</div></div>'
+  +'</div>'
+  +((pk||(x.top100&&x.top100.length)||(x.all_conference&&x.all_conference.length))?'<div class="mut sm" style="margin-top:10px">'
+   +(pk?'Player to know: <b style="color:#fff">'+(pk.pid?'<a href="#" class="plink" data-cbb-player="'+E(pk.pid)+'" data-cbb-tid="'+t.id+'" style="color:inherit">'+E(pk.name)+'</a>':E(pk.name))+'</b> ('+E(pk.ht)+' · '+E(pk.cls)+' · '+E(pk.pos)+')'+(Object.keys(ls).length?' · last season '+Object.keys(ls).map(function(k){return E(ls[k])+' '+E(k)}).join(" / "):'')+'<br>':'')
+   +(x.top100&&x.top100.length?'Preseason Top 100 players: '+x.top100.map(function(p){return '#'+p.rank+' '+E(p.name)}).join(", ")+'<br>':'')
+   +(x.all_conference&&x.all_conference.length?'Preseason all-conference: '+x.all_conference.map(E).join(", "):'')
+   +'</div>':'')
+  +'</div>';
+ out.insertAdjacentHTML("afterbegin",h)});
 out.innerHTML=ff+segHtml+starsHtml+hHtml+rotHtml+prHtml+'<div class="card"><b>Returning minutes</b> '+P(t.retMin)+' · <b>Returning production</b> '+P(t.retProd)+' · <b>Production in</b> '+t.inWS+' · <b>Production out</b> '+t.outWS+' · <b>Newcomers w/o D-I stats</b> '+t.nNew+'</div>'+L(t.ins,"Incoming transfers","From")+L(t.outs,"Outgoing transfers","To")+L(t.left,"Other departures (graduated, pro or not on a D-I roster)")})</script></body></html>
