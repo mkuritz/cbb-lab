@@ -339,13 +339,14 @@ function draw(){
   if(q&&(t.team+" "+t.conf+" "+t.ab).toLowerCase().indexOf(q)<0)return false;
   return true;
  });
- out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team &amp; Style Mismatches</th><th>Projected Lead Starter &amp; Usage</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>G1–10 → G21–30</th><th>AdjT</th><th>Torvik O / D</th><th>Ret min</th><th>In / Out</th></tr>'+r.map((t,i)=>{
+ out.innerHTML='<div class="card wrap" style="padding:0"><table><tr><th>#</th><th>Team &amp; Style Mismatches</th><th>Projected Lead Starter &amp; Usage</th><th>Conf</th><th>Last net</th><th>Proj net</th><th>Change</th><th>G1–10 → G21–30</th><th>AdjT</th><th>Torvik O / D</th><th>Ret min</th><th>In / Out</th></tr>'+r.slice(0,window.CBB_PG||50).map((t,i)=>{
   var lead=(t.rot&&t.rot[0])?t.rot[0]:null;
   var leadHtml=lead?'<a href="#" class="plink" data-cbb-player="'+E(lead.id||lead.n)+'" data-cbb-tid="'+t.id+'" style="color:inherit;font-weight:700">'+E(lead.n)+'</a> <span class="mut sm">('+E(lead.yr_short||"")+' · '+lead.proj_min+'m · '+lead.usg+'% USG · '+lead.proj_pts+' PPG)</span>':'—';
   var segs=(t.exp_meta&&t.exp_meta.segments)||{};
   var s1=segs.g1_10?segs.g1_10.em:t.proj,s3=segs.g21_30?segs.g21_30.em:t.proj;
   return '<tr class="'+(t.status!="ok"?"pend":"")+'"><td>'+(t.status=="ok"?i+1:"·")+'</td><td>'+(t.ap?'<span class="ap-tag">#'+t.ap+'</span>':'')+CBB.logo(t.id,18)+' <a href="team.html?id='+t.id+'"><b>'+E(t.team)+'</b></a>'+(t.status!="ok"?' <span class="sm mut">roster pending</span>':'')+CBB.badgesHtml(t.badges)+'</td><td>'+leadHtml+'</td><td>'+E(t.conf)+'</td><td>'+S(t.net)+'</td><td>'+S(t.proj)+'</td><td class="'+C(t.chg)+'"><b>'+S(t.chg)+'</b></td><td class="sm">'+S(s1)+' → <b class="pos">'+S(s3)+'</b></td><td>'+(t.adjT!=null?t.adjT.toFixed(1):"—")+'</td><td class="sm">'+(t.adjO!=null?t.adjO.toFixed(1)+" / "+t.adjD.toFixed(1):"—")+'</td><td>'+P(t.retMin)+'</td><td>'+t.nIn+' / '+(t.nOut+t.nLeft)+'</td></tr>';
- }).join("")+'</table></div>';
+ }).join("")+'</table></div>'+(r.length>(window.CBB_PG||50)?'<div style="display:flex;gap:8px;justify-content:center;margin:12px 0"><button type="button" class="pill" data-cbb-more="50">Show 50 more</button><button type="button" class="pill" data-cbb-more="all">Show all '+r.length+'</button><span class="mut sm" style="align-self:center">Showing '+Math.min(r.length,window.CBB_PG||50)+' of '+r.length+'</span></div>':'');
+ out.querySelectorAll("[data-cbb-more]").forEach(function(b){b.onclick=function(){var v=b.getAttribute("data-cbb-more");window.CBB_PG=v=="all"?1e9:(window.CBB_PG||50)+50;var y=scrollY;draw();scrollTo(0,y)}});
 }
 
 function bindSegBtns(){
@@ -368,5 +369,5 @@ document.getElementById("main-tabs").onclick=function(e){
  var b=e.target.closest("[data-mt]");
  if(b){MT=b.dataset.mt;draw()}
 };
-cf.onchange=pd.onchange=document.getElementById("q-search").oninput=draw;
+cf.onchange=pd.onchange=document.getElementById("q-search").oninput=function(){window.CBB_PG=50;draw()};
 draw()});</script></body></html>
