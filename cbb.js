@@ -200,5 +200,5 @@ function bar(){if(document.getElementById("v2bar"))return;var C=window.SLTOP;if(
  b.querySelectorAll("a").forEach(function(a){a.addEventListener("pointerdown",function(){b.querySelectorAll("nav a.on").forEach(function(x){if(x.parentNode==a.parentNode)x.classList.remove("on")});a.classList.add("on")})});
  b.querySelector("form").onsubmit=function(e){e.preventDefault();var q=b.querySelector("input").value.trim();location.href=C.ask+encodeURIComponent(q||"most improved college basketball teams")}}
 if(document.readyState=="loading")document.addEventListener("DOMContentLoaded",bar);else bar();
-if(!window.__sl&&!document.querySelector('script[src*="/sl/sl.js"]')){var _sls=document.createElement("script");_sls.src="https://sportslabshq.com/sl/sl.js?v=11";_sls.defer=true;document.head.appendChild(_sls);}
+(function(){function _ld(){if(window.__sl||document.querySelector('script[src*="/sl/sl.js"]'))return;var _sls=document.createElement("script");_sls.src="https://sportslabshq.com/sl/sl.js?v=12";_sls.defer=true;document.head.appendChild(_sls)}if(document.readyState=="loading")document.addEventListener("DOMContentLoaded",_ld);else _ld()})();
 })();
