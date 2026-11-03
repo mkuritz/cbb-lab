@@ -36,7 +36,7 @@ else if(location.hash==="#hurdles")MT="hurdles";
 else if(location.hash==="#class")MT="class";
 else if(location.hash==="#sim")MT="sim";
 
-sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked with Rolling 10-Game Season Segments, "+(D.upset_radar||[]).length+" Calculated Upset Alerts, "+(D.prop_hurdles||[]).length+" High-Usage Prop Hurdles, and "+(D.props||[]).length+" player prop projections. Updated "+D.built+" · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+sub.textContent=D.teams.filter(t=>t.status=="ok").length+" D-I teams ranked with Rolling 10-Game Season Segments, "+(D.upset_radar||[]).length+" Calculated Upset Alerts, "+(D.prop_hurdles||[]).length+" High-Usage Prop Hurdles, and "+(D.props||[]).length+" player prop projections. Updated "+D.built+(D.stale?" · Out of date: the model is more than 36 hours behind the latest ratings":"")+" · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
 var confs=[...new Set(D.teams.map(r=>r.conf))].sort();
 cf.innerHTML+=confs.map(c=>"<option>"+E(c)+"</option>").join("");
 var topConfs=["","SEC","Big Ten","Big 12","ACC","Big East","Mountain West","WCC","A-10","American"];

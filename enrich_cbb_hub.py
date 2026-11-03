@@ -6,9 +6,12 @@
 5. 🏆 Conference Power Matrix & Title/Final Four Tier Board
 Never touches sl_ncaamb_game_pricer.py or sl_ncaamb_pricer.py constants. Preserves 'Ratings: barttorvik.com'.
 """
-import json, math, urllib.request, collections
+import json, math, os, urllib.request, collections, datetime as dt
+from zoneinfo import ZoneInfo
 
-CBB_JSON = "/workspace/cbb-lab/data/cbb.json"
+CBB_JSON = os.environ.get("CBB_JSON") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cbb.json")   # repo-relative (was a hard-coded box path)
+ET = ZoneInfo("America/New_York")
+STALE_H = 36   # model flagged stale when it is more than 36h behind the latest daily ratings
 
 def norm_cdf(x):
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
@@ -23,7 +26,8 @@ def prob_to_am(p):
 def fetch_espn_nov_games(espn_to_t):
     games = []
     seen = set()
-    days = ("20261101", "20261102", "20261103", "20261104", "20261106", "20261107", "20261108", "20261110", "20261111", "20261114", "20261115", "20261118")
+    t0 = dt.datetime.now(ET).date()   # rolling window (was a fixed list of November dates)
+    days = tuple((t0 + dt.timedelta(days=k)).strftime("%Y%m%d") for k in range(-1, 15))
     for day in days:
         u = f"https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates={day}&groups=50&limit=200"
         try:
@@ -352,7 +356,22 @@ def main():
     D["conf_matrix"] = conf_matrix
 
     D["ratings_credit"] = "Ratings: barttorvik.com"
+    now = dt.datetime.now(ET)
+    D["built"] = now.strftime("%b %-d, %Y %-I:%M %p ET")
+    D["model_built_utc"] = now.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    ras = None
+    try:   # as-of time of the daily game ratings (published with the CBB game lines)
+        ras = json.load(urllib.request.urlopen(urllib.request.Request("https://betlab.sportslabshq.com/data/cbb_lines.json", headers={"User-Agent": "Mozilla/5.0"}), timeout=20)).get("ratings_as_of")
+    except Exception as ex:
+        print("ratings as-of fetch warn:", ex)
+    D["ratings_as_of"] = ras or D.get("ratings_as_of")
+    def _p(x):
+        try: return dt.datetime.fromisoformat(x.replace("Z", "+00:00"))
+        except Exception: return None
+    rb, mb = _p(D.get("ratings_as_of") or ""), _p(D["model_built_utc"])
+    D["stale"] = bool(rb and mb and (rb - mb) > dt.timedelta(hours=STALE_H))
     json.dump(D, open(CBB_JSON, "w"), separators=(",", ":"))
+    print(f"built={D['built']} ratings_as_of={D['ratings_as_of']} stale={D['stale']}")
     print(f"Enriched cbb.json: {len(D['upset_radar'])} Upset Radar alerts, {len(D['prop_hurdles'])} Prop Hurdles, {len(D['conf_matrix'])} Conferences.")
 
 if __name__ == "__main__":

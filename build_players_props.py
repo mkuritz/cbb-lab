@@ -5,8 +5,9 @@ Never touches cbb_betlab pricer files. Preserves 'Ratings: barttorvik.com' credi
 """
 import json, math, os
 
-RAW_DIR = "/workspace/cbbhub-v1/raw"
-CBB_JSON = "/workspace/cbb-lab/data/cbb.json"
+import os as _os
+RAW_DIR = _os.environ.get("CBB_RAW_DIR", "/workspace/cbbhub-v1/raw")   # private roster/stat cache: box only (sl-box); hub workflow skips this step when absent
+CBB_JSON = _os.environ.get("CBB_JSON") or _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "data", "cbb.json")
 
 def norm_cdf(x):
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))

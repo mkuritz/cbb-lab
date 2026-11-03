@@ -1,0 +1,42 @@
+name: CBB Hub daily build
+# Daily ~6:30 AM ET, after the 6:00 AM ratings job (sl-scheduler dispatches it; cron below is a sparse backup).
+# Rebuilds data/cbb.json from free public feeds (schedule, rolling Upset Radar, conference board), stamps the model
+# build time + the ratings as-of time, and flags the model stale when it is >36h behind the ratings.
+# Player/prop enrichment needs the private roster cache, which only exists on the sl-box backup runner.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "40 11 * * *"   # 6:40 AM EST / 7:40 AM EDT backup
+permissions: {}
+concurrency:
+  group: cbb-hub
+  cancel-in-progress: false
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ${{ vars.RUNNER_MODE == 'box' && fromJSON('["self-hosted","sl-box"]') || 'ubuntu-latest' }}   # GitHub-hosted primary; sl-box backup
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Rebuild hub model data
+        run: python3 enrich_cbb_hub.py
+      - name: Player props enrichment (sl-box only; needs private roster cache)
+        continue-on-error: true
+        run: if [ -f /workspace/cbbhub-v1/raw/pstats_2026.json ]; then python3 build_players_props.py; else echo "No private roster cache on this runner; players/props kept from the last box build"; fi
+      - name: Check freshness
+        run: python3 -c "import json;d=json.load(open('data/cbb.json'));print('built',d['built'],'ratings_as_of',d.get('ratings_as_of'),'stale',d.get('stale'));assert len(d['teams'])>=350"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898475+github-actions[bot]@users.noreply.github.com"
+          cp data/cbb.json /tmp/cbb.json
+          for i in 1 2 3; do
+            git fetch -q origin main && git reset -q --hard origin/main && cp /tmp/cbb.json data/cbb.json
+            git add data/cbb.json
+            if git diff --cached --quiet; then echo "No change"; break; fi
+            git commit -qm "CBB Hub data $(TZ=America/New_York date '+%Y-%m-%d %H:%M %Z')" && git push -q && break
+            sleep 5
+          done
