@@ -15,14 +15,14 @@ def fixture():
     players = []
     for i in range(3):
         p = dict(id=str(i), n=f'TEST FIXTURE {i}', tid=1, pos='G', team='TEST TEAM', role='Starter',
-                 gp=35, ppg=99, proj_min=40, usg=99, game_logs=[])
+                 gp=35, ppg=99, proj_min=40, proj_pts=12, proj_usg=22, usg=99, game_logs=[])
         for day in range(1, 5):
             p['game_logs'].append(dict(gid=str(day), start=f'2026-11-0{day}T00:00:00Z',
                 completed=True, season='2026-27', tid=1, opp_tid=2, home=day%2==0,
                 min=20+i, pts=10+i, reb=3, ast=2, tpm=2, fgm=4, fga=10, fta=4))
         players.append(p)
     return dict(built='TEST FIXTURE', players=players,
-                teams=[dict(id=1, team='TEST TEAM', rot=players), dict(id=2, team='TEST OPPONENT', adjD=100, adjT=70)],
+                teams=[dict(id=1, team='TEST TEAM', rot=players), dict(id=2, team='TEST OPPONENT', adjD=100, adjT=70, rot=[dict(id='opp', n='TEST OPPONENT STARTER', tid=2, pos='F', starter=True, role='Starter', proj_min=30, proj_usg=23)])],
                 games=[dict(id='future', start='2026-11-10T00:00:00Z', away_tid=1, home_tid=2)])
 
 
@@ -35,7 +35,7 @@ class BuilderTest(unittest.TestCase):
         for p in out['players'].values():
             self.assertEqual(p['status'],'insufficient_logs')
             self.assertNotIn('windows',p)
-            self.assertEqual(len(p['opponent_context']),2)
+        self.assertEqual(len(out['players']['1|0']['opponent_context']),2)
 
     def test_real_log_math_and_hidden_missing_metrics(self):
         out=b.build(fixture(),NOW)
@@ -72,6 +72,30 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual(p['axes'],[])
         self.assertNotIn('pts',p['windows']['All']['v'])
         self.assertNotIn('ts',p['windows']['All']['v'])
+
+    def test_projected_rotation_share_is_explicit_and_unchanged(self):
+        d=fixture();out=b.build(d,NOW)
+        rot=out['rotations']['1']
+        self.assertEqual(rot['total_minutes'],120)
+        self.assertAlmostEqual(sum(r['share'] for r in rot['rows']),100,places=1)
+        self.assertEqual(rot['rows'][0]['usage'],22)
+        self.assertNotIn('availability',rot['rows'][0])
+        self.assertEqual(d['players'][0]['proj_min'],40)
+
+    def test_graph_benchmark_is_exact_game_market_else_existing_projection(self):
+        d=fixture();p=b.build(d,NOW)['players']['1|0']
+        self.assertEqual(p['graph']['pts']['benchmark']['kind'],'projection')
+        self.assertEqual(p['graph']['pts']['benchmark']['value'],12)
+        self.assertIsNone(p['graph']['reb']['benchmark'])
+        self.assertEqual(len(p['graph']['pts']['games']),4)
+        self.assertEqual(p['h2h']['n'],4)
+        self.assertNotIn('L6',p['windows'])
+        d['props']=[dict(aid='0',t=1,gid='past',mk='Points',line=99),
+                    dict(aid='0',t=1,gid='future',mk='Points',line=10.5)]
+        p=b.build(d,NOW)['players']['1|0']
+        self.assertEqual(p['graph']['pts']['benchmark']['value'],10.5)
+        self.assertEqual(p['similar'][0]['benchmark']['kind'],'line')
+        self.assertTrue(all(r['value']!=12 for r in p['graph']['pts']['games']))
 
     def test_radar_schedule_metadata_only(self):
         d=fixture();d['games']=[]

@@ -81,6 +81,52 @@ def window(rs, minimum=MIN_GAMES):
     return dict(n=len(rs), v=v, samples=samples)
 
 
+def rotation(team):
+    """Published projected rotation, NOT official availability or logged shares."""
+    rows = []
+    total = sum(p['proj_min'] for p in team.get('rot', []) if number(p.get('proj_min')))
+    for p in team.get('rot', []):
+        if not number(p.get('proj_min')):
+            continue
+        row = dict(id=str(p.get('id') or ''), name=p['n'], pos=p.get('pos'),
+                   role=p.get('role'), starter=p.get('starter') is True,
+                   minutes=p['proj_min'])
+        if total:
+            row['share'] = round(100 * p['proj_min'] / total, 2)
+        if number(p.get('proj_usg')):
+            row['usage'] = p['proj_usg']
+        if p.get('injury_status'):
+            row['availability'] = p['injury_status']
+        rows.append(row)
+    return dict(team=team.get('team'), total_minutes=round(total, 2),
+                rows=sorted(rows, key=lambda r: r['minutes'], reverse=True))
+
+
+def graph_data(p, rs, source, game):
+    """Actual production only; existing thresholds are context, never fake results."""
+    out = {}
+    names = {'pts': ('Points', 'proj_pts'), 'reb': ('Rebounds', 'proj_reb'),
+             'ast': ('Assists', 'proj_ast'), 'tpm': ('3PM', 'proj_tpm')}
+    for stat, (label, proj) in names.items():
+        valid = [r for r in rs if stat in r['v']]
+        if len(valid) < MIN_GAMES:
+            continue
+        market = next((x for x in source.get('props', [])
+                       if str(x.get('aid')) == str(p.get('id'))
+                       and str(x.get('t')) == str(p['tid'])
+                       and str(x.get('gid')) == str(game['id'])
+                       and x.get('mk') == label and number(x.get('line'))), None)
+        benchmark = None
+        if market:
+            benchmark = dict(value=market['line'], kind='line', label='Published line')
+        elif number(p.get(proj)):
+            benchmark = dict(value=p[proj], kind='projection', label='Published role projection')
+        out[stat] = dict(label=label, benchmark=benchmark,
+                         games=[dict(start=r['start'], opp_tid=r['opp_tid'], value=r['v'][stat])
+                                for r in valid])
+    return out
+
+
 def build(source, now):
     season = current_season(now)
     teams = {str(t['id']): t for t in source.get('teams', [])}
@@ -91,6 +137,7 @@ def build(source, now):
             players[player_key(p)] = p
     for p in source.get('players', []):
         players.setdefault(player_key(p), p)
+    rotations = {tid: rotation(t) for tid, t in teams.items()}
     history = {k: logs(p, season, now) for k, p in players.items()}
     all_windows = {k: window(rs) for k, rs in history.items()}
     upcoming = []
@@ -144,9 +191,11 @@ def build(source, now):
         if not all_w:
             continue
         wins = {'All': all_w}
-        for name, rows, minimum in [('L5', rs[:5], 3), ('L10', rs[:10], 3),
+        for name, rows, minimum in [('L3', rs[:3], 3), ('L6', rs[:6], 3), ('L10', rs[:10], 3),
                                     ('Home', [r for r in rs if r['home'] is True], 2),
                                     ('Away', [r for r in rs if r['home'] is False], 2)]:
+            if name.startswith('L') and len(rs) < int(name[1:]):
+                continue
             if w := window(rows, minimum):
                 wins[name] = w
         axes = []
@@ -160,7 +209,10 @@ def build(source, now):
             val = all_w['v'][k]
             pct = round(100 * (sum(x < val for x in pop) + .5 * sum(x == val for x in pop)) / len(pop))
             axes.append(dict(k=k, label=label, value=val, percentile=pct, peers=len(pop), n=all_w['samples'][k]))
-        entry.update(windows=wins, axes=axes)
+        entry.update(windows=wins, axes=axes, graph=graph_data(p, rs, source, g))
+        h2h = [r for r in rs if r['opp_tid'] == oid]
+        if h := window(h2h, 1):
+            entry['h2h'] = h
         similar = []
         minutes = all_w['v'].get('min')
         if minutes:
@@ -174,9 +226,10 @@ def build(source, now):
                     if r['opp_tid'] == oid and 'pts' in r['v'] and 'pts' in w['v']:
                         similar.append(dict(name=players[q]['n'], team=players[q].get('team'),
                                             start=r['start'], points=r['v']['pts'],
-                                            average=w['v']['pts'], minutes=qm))
+                                            average=w['v']['pts'], minutes=qm,
+                                            benchmark=(entry['graph'].get('pts') or {}).get('benchmark')))
         entry['similar'] = sorted(similar, key=lambda r: r['start'], reverse=True)[:12]
-    return dict(version=1, season=season, built_at=now.isoformat(), source='data/cbb.json',
+    return dict(version=2, rotations=rotations, season=season, built_at=now.isoformat(), source='data/cbb.json',
                 source_built=source.get('built'), stats=STATS, minimum_games=MIN_GAMES,
                 coverage=dict(players=len(players), logged_players=sum(bool(rs) for rs in history.values()),
                               upcoming_games=len(upcoming), **counts), players=result)

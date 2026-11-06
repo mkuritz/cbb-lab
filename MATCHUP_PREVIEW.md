@@ -1,110 +1,142 @@
-# CBB player-profile Matchup tab — LOCAL PREVIEW ONLY
+# CBB player-profile Matchup workspace — LOCAL PREVIEW ONLY
 
-No push, deployment, workflow, or model changes. NHL's `Profile | Matchup`
-interaction is reproduced in the shared CBB modal, not in a new standalone
-profile. The original Profile body is unchanged (DOM-compared to commit 143008a).
-Clicking a player stays on the current page. Both tab rows support arrow keys,
-Home/End, selected state, and labelled panels; Profile remains the default.
+Continues the existing preview on branch `preview/cbb-profile-matchup`, on top of
+commit `262c846`. No push, deployment, workflow, app-nav rebuild, or model changes.
+The shared **Profile | Matchup** shell stays intact, with Profile default and its
+original body unchanged (DOM-compared to baseline commit 143008a).
 
-## Run / verify
+## Preview and verify
 
 ```sh
 npm ci --ignore-scripts
 python3 scripts/build_matchup_analyzer.py
 npm test
-# Optional local preview (no publishing):
+# Optional local preview only:
 python3 -m http.server 8766 --bind 127.0.0.1
 # Open /players.html, find Milan Momcilovic, click his name, then Matchup.
 ```
 
-The analyzer is loaded before the shared modal on all seven pages using `cbb.js`:
-players, props, matchups/index, team, teams, transfers, and method. New/changed
-scripts and modal CSS are cache-busted. Matchup data is lazy-loaded once per page.
-The builder is intentionally **not wired to any deployment workflow**.
+All seven shared-modal entrypoints load the cache-busted analyzer before cbb.js:
+players, props, index/matchups, team, teams, transfers, and method. Tab rows have
+arrow/Home/End navigation, labelled panels and selected state. Matchup data loads
+on demand. No page navigation is triggered by player or analyzer-tab clicks.
 
-## Important data gap: do not describe this as a fully populated analyzer
+## Richer workspace
 
-`data/cbb.json` was built **Oct 22, 2026, 1:38 PM ET**. It publishes prior-season
-player aggregates and next-season projections, but **no current-season per-game
-player logs**. Its 20 opening-slate games are already past. The published
-`upset_radar` contains additional future scheduled-game metadata; the new builder
-uses only game identity/time/team/neutral fields from those records, never their
-scores, probabilities, tiers, or projected tempo.
+Available sections appear in this order; unsupported ones are hidden:
+**Graph | Matchup | Share | Similar | Lineup**.
 
-The generated snapshot has 8,159 distinct team/player identities, zero players
-with valid game logs, 29 future scheduled games, 984 profiles with a future game
-but insufficient logs, and 7,175 without a future game. Do not interpret any of
-those profiles as game-log analysis. None has fabricated current-season numbers.
+- **Graph:** actual game-by-game results, stat chips, supported L3/L6/L10/Season
+  windows, H2H when available, green/red bars against a yellow benchmark, observed
+  above-threshold percentage, and an unplayed `?` placeholder. A published line
+  must match this exact player/team/upcoming game/market; otherwise use only an
+  existing published role projection, explicitly labelled *not a betting line*.
+  Every past result is compared with the same upcoming threshold, not fictitious
+  historical lines. Without a threshold, omit above-threshold percentages and
+  comparison colors/line. Tables provide accessible actual results.
+- **Matchup:** published opponent adjusted defense/tempo; logged H2H summary,
+  player percentile radar and recent production chips when real logs exist.
+  Missing axes are hidden. The radar is clearly player-only: no opponent-allowed
+  shape or dual percentile bars can be drawn from the current published dataset.
+- **Share:** projected teammate rotation opportunity, ranked by projected minutes,
+  position filters, selected-player emphasis, projected role usage, and minute-
+  share bars. All are labelled **projected rotation, not logged opportunity**.
+  Share is projected minutes divided by the published roster total, not a claim
+  of observed regulation team-minute share or measured team possession share.
+  That total is shown because the existing model does not constrain it to 200.
+- **Similar:** same-position players whose logged season minutes are within 30%,
+  actual results against this opponent, and each player's own logged average.
+  Comparison KPIs/columns appear only when there is a real published line or
+  existing projection to use; otherwise plain actual-stat comps only. No fake
+  historical lines or hit-rate claims.
+- **Lineup:** existing opposing rotation, full/proj-starter filters, projected
+  minutes/role usage. Clearly labelled **projected, not an official lineup**.
+  No invented confirmed starters, injury statuses, weather, or shot-location maps.
 
-**Real-data walkthrough, verified by DOM test:** Milan Momcilovic, Kentucky
-(player 4848637 / team 135), has Kansas next in the published schedule, at a
-neutral venue on **Nov 10, 2026, 9:30 PM ET**. Matchup displays:
+The workspace uses CBB Hub colors/styles, not outside product names or branding.
+The twelve supplied reference-image paths returned `File not found` to this
+executor. Implementation therefore used the detailed accompanying descriptions;
+no claim of direct visual inspection of those unavailable images is made.
 
-- Explicit empty state: no upcoming game with logged games for this player yet;
-  0 valid logged games, with 3 required.
-- **Opponent** tab only: Kansas adjusted defense **93.6 points / 100 possessions**
-  and adjusted tempo **72.2 possessions / 40 minutes**, clearly labelled published
-  rating context, with the Oct 22 snapshot date and `Ratings: barttorvik.com`.
-- Overview/radar, Splits, and Similar players are hidden because their required
-  logged data does not exist. Prior-season profile numbers are not repurposed as
-  this-season logs. Existing Profile content remains accessible unchanged.
+## Real-data walkthrough and limitation
 
-There is currently **no real player with a populated current-season radar/splits/
-similar sample available in the allowed published files**. Full four-section
-rendering is verified with explicitly named TEST FIXTURE data in tests only;
-no fixture data is written to `data/` or shown on real profiles.
+`data/cbb.json` snapshot: **Oct 22, 2026, 1:38 PM ET**. It has prior-season
+aggregates and role projections, but **zero current-season per-game player logs**.
+The new builder never treats gp/ppg/usg/proj_* as logged current-season outcomes.
+Its 20 opening-slate games are past; additional future schedule metadata comes
+from published `upset_radar` records (identity/time/teams/neutral only, never model
+scores, probabilities, tiers or projected tempo).
 
-## Implemented analysis rules / future published-log contract
+Generated coverage: **8,159** team/player identities; **0** with valid logs;
+**29** future games; **984** insufficient-log profiles with a future opponent;
+**7,175** profiles without an upcoming game. There is no valid real fully
+populated Graph/radar/Similar example in the permitted published data.
 
-Builder: `scripts/build_matchup_analyzer.py` → `data/matchup_an.json`. No network
-access. It reads only published `data/cbb.json`. Real existing team ratings supply
-opponent context. No model/prop/hurdle/Highlighted/grading code reads the output.
+**Verified real example:** Milan Momcilovic, Kentucky, ID `135|4848637`, neutral vs
+Kansas on **Nov 10, 2026, 9:30 PM ET** (game 401909786).
 
-When the existing publisher can supply real per-game data, each player object may
-include `game_logs` with these explicit fields (this preview does **not** add an
-external data fetcher or pretend the current publisher already emits this):
+- **Matchup**: Kansas AdjD **93.6 points/100 possessions**, AdjT **72.2 possessions/
+  40 minutes**, snapshot label and `Ratings: barttorvik.com` credit.
+- **Share**: Kentucky's **14-player** projected rotation; Milan **28.0 projected
+  minutes**, **22.4% projected role usage**, **12.7%** of the published projected
+  rotation-minute total (**219.7**). The denominator is disclosed; this is not
+  measured game share. G/F/C filters work without changing the denominator.
+- **Lineup**: Kansas's **15-player** published projected rotation, including five
+  projected starters. Trey Kaufman-Renn: **28.7 projected minutes**, **27.0%**
+  projected role usage. This is not an official/confirmed game lineup.
+- **Graph and Similar** are hidden, with an explicit **0 logged games; 3 required**
+  notice. Radar, H2H and recent logged windows are likewise hidden.
+- Existing Profile body is unchanged; switching tabs stays on the same page.
 
-- `gid`: game ID; `start`: timezone-qualified actual game-start ISO timestamp.
-- `season`: fall/spring label, e.g. `2026-27`; `completed`: boolean true.
-- `tid`, `opp_tid`: CBB Hub team IDs; `home`: boolean (omit for unknown/neutral).
-- `min`, `pts`, `reb`, `ast`, `tpm`: actual played-game boxscore fields.
-- Optional measured `usg` (percentage), and `fgm`, `fga`, `fta` for shooting splits.
+Without a future game the real Share section can remain useful, clearly projected;
+all opponent-dependent sections disappear. An expired cached next game is also
+removed at runtime. Missing JSON produces a readable unavailable state.
 
-Only current-season completed games before build time, for that roster team,
-with positive actual minutes, are eligible. Duplicate games, DNPs, prior-season
-rows, projections and missing values cannot fill in a sample. Team + player ID
-keys avoid collisions between transfer identities.
+## Data pipeline / remaining integration
 
-- **Overview:** actual minutes, points, rebounds, assists, 3PM, measured usage,
-  eFG%, TS% when available. Percentiles require 3+ logged games and at least 3
-  same-position peers; radar requires 3 populated axes. Higher percentile means
-  higher value, not necessarily better efficiency. No invented opponent overlay.
-- **Splits:** All, L5, L10 (3+ games), Home/Away (2+ games). Each stat shows its
-  own sample; unavailable metrics/windows are omitted. eFG% and TS% use summed
-  attempts, not the mean of per-game percentages.
-- **Opponent:** available published adjusted defense and adjusted tempo only,
-  labelled rating snapshot, never alleged current-season position allowances.
-- **Similar players:** same position, logged season minutes within 30%; actual
-  games against this opponent this season, with points results and each player's
-  own logged season average. No lines, odds, or estimated hits.
+`scripts/build_matchup_analyzer.py` reads only published `data/cbb.json`, makes no
+network calls, and writes `data/matchup_an.json`. Shared team rotations are stored
+once, not duplicated for every player. Output includes source hash/provenance.
+The builder is deliberately **not wired to any deployment workflow**.
 
-No real positional-allowance dataset or complete opposing boxscores are published
-here, so the component does not manufacture opponent percentiles or defensive
-player matchups. An expired cached matchup is hidden at runtime as well as build
-time. Missing JSON yields a clear unavailable state, not empty fake tiles.
+To populate logged views, the existing data publisher must first supply actual
+per-player `game_logs`. This preview does **not** pretend that ingestion exists.
+Accepted row fields:
 
-## Verification / security
+- `gid`, timezone-qualified `start`, `season` (`2026-27`), `completed: true`.
+- `tid`, `opp_tid` using CBB Hub team IDs; optional boolean `home`.
+- Actual `min`, `pts`, `reb`, `ast`, `tpm`; optional measured `usg`, `fgm`, `fga`,
+  `fta` (for shooting efficiency).
 
-`npm test`: six builder tests plus jsdom assertions covering the real Milan
-profile, exact original Profile body, lazy load, keyboard switching, no navigation,
-all seven entrypoint imports, missing-schedule and stale-cache empty states,
-all four sections with test-only fixtures, and hostile text-field escaping.
+Only this-season completed games before build time, for that roster team and
+with positive played minutes, are eligible. Duplicate games, DNPs, prior-season
+rows, missing fields and projections never fill in samples. Composite team/player
+keys prevent transfer collisions. All/L3/L6/L10 require their stated game sample;
+Home/Away require two games. Each metric discloses its own sample. eFG% and TS%
+use summed attempts. Season percentiles require 3+ logged games and 3+ same-
+position peers; radar needs at least three populated axes.
+
+The current published data has no complete defensive-position allowances,
+confirmed availability, actual lineup feed, or weather. Those features are
+omitted rather than inferred or invented. No core projection builder,
+Highlighted/model/prop/grading input was modified, and nothing reads this display
+output back into those systems.
+
+## Verification and security
+
+`npm test`: eight builder tests plus jsdom tests for the real Milan profile,
+unchanged original Profile body, all seven entrypoint imports, lazy loading,
+keyboard tabbing, no navigation, position filters with fixed share denominator,
+Kansas projected-starter filter, absent/expired opponents, all five sections
+with explicitly named TEST FIXTURE data, line/projection fallback, graph colors,
+recent windows, unplayed `?`, omitted KPIs without thresholds, and hostile text
+escaping including chip-driven re-renders. No fixture is written to data/.
 `node --check` for both JS files and `git diff --check` pass.
 
-Aikido scan and re-scan completed. It reports 30 generic `innerHTML` warnings
-(severity 80): 28 at pre-existing sinks in cbb.js/index/players/props and 2 in the
-new renderer. The new renderer escapes all source text and numeric display
-fields; hostile-data DOM tests confirm they cannot create elements/handlers.
-Its two remaining pattern warnings are assessed false positives. Existing-page
-warnings are outside this preview's changes and were not remediated; this is not
-an all-clear security assessment of the legacy hub.
+Latest Aikido scan: 29 generic `innerHTML` pattern warnings, severity 80: 28 at
+pre-existing sinks in cbb.js/index/players/props; one new warning at analyzer
+line 128 (`panel.innerHTML = render()`). That renderer uses only local render
+functions with escaped text/numeric coercion; hostile-input re-render tests
+confirm no elements or handlers can be injected. Assessed false positive for the
+new renderer. Legacy warnings are outside scope and were not remediated; this
+is not an all-clear security assessment of the existing hub.

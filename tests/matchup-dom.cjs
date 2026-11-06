@@ -20,8 +20,8 @@ function env(data=an){
  // Every shared-modal entrypoint must load the analyzer first and cache-bust both scripts.
  for(const page of ['players','props','index','team','teams','transfers','method']){
   const html=read(page+'.html');
-  assert.match(html,/matchup-analyzer\.js\?v=cbb-matchup-1/);
-  assert.match(html,/cbb\.js\?v=cbb-matchup-1/);
+  assert.match(html,/matchup-analyzer\.js\?v=cbb-matchup-2/);
+  assert.match(html,/cbb\.js\?v=cbb-matchup-2/);
   assert(html.indexOf('matchup-analyzer.js')<html.indexOf('src="cbb.js'));
  }
  const e=env(),{document:d,w}=e;
@@ -38,9 +38,23 @@ function env(data=an){
  assert.match(matchup.textContent,/0 valid logged games/);
  assert.match(matchup.textContent,/Kansas/);
  assert.match(matchup.textContent,/Ratings: barttorvik.com/);
- assert.deepEqual(Array.from(matchup.querySelectorAll('[data-cma-section]'),b=>b.textContent),['Opponent']);
+ assert.deepEqual(Array.from(matchup.querySelectorAll('[data-cma-section]'),b=>b.textContent),['Matchup','Share','Lineup']);
  const row=an.players['135|4848637'];
  for(const c of row.opponent_context)assert(matchup.textContent.includes(c.value.toFixed(1)));
+ // Published projected share is labelled, and position filters retain the same team denominator.
+ d.querySelector('[data-cma-section="share"]').click();
+ assert.match(matchup.textContent,/219.7/);
+ assert.match(matchup.textContent,/not observed team-minute share/);
+ let shareRow=Array.from(d.querySelectorAll('#cma-panel-share tr')).find(r=>r.textContent.includes('Milan Momcilovic'));
+ assert.match(shareRow.textContent,/28.0/);assert.match(shareRow.textContent,/12.7%/);
+ d.querySelector('[data-cma-pos="F"]').click();
+ assert(!d.querySelector('#cma-panel-share').textContent.includes('Alex Wilkins'));
+ assert(d.querySelector('#cma-panel-share').textContent.includes('Milan Momcilovic'));
+ d.querySelector('[data-cma-section="lineup"]').click();
+ assert.match(d.querySelector('#cma-panel-lineup').textContent,/not an official lineup/);
+ d.querySelector('[data-cma-starters="Starters"]').click();
+ assert.equal(d.querySelectorAll('#cma-panel-lineup tbody tr').length,5);
+ assert.match(d.querySelector('#cma-panel-lineup').textContent,/Trey Kaufman-Renn/);
  assert.equal(w.location.pathname,'/players.html');
  d.querySelector('#cbb-tab-profile').click();assert.equal(profile.innerHTML,before);
  assert(!profile.hidden);assert(matchup.hidden);
@@ -58,16 +72,31 @@ function env(data=an){
  const noNext=Object.values(an.players).find(p=>p.status==='no_upcoming'&&p.id);
  w.CBB.openPlayerModal(noNext.id,noNext.tid);await wait();d.querySelector('#cbb-tab-matchup').click();await wait();
  assert.match(d.querySelector('#cbb-panel-matchup').textContent,/No future game/);
- assert.equal(d.querySelectorAll('[data-cma-section]').length,0);
+ assert.deepEqual(Array.from(d.querySelectorAll('[data-cma-section]'),b=>b.textContent),['Share']);
  // Synthetic fixture proves all four render paths. Not real-player evidence.
  const code="import sys,json;sys.path.insert(0,'tests');from test_matchup_builder import fixture,NOW,b;print(json.dumps(b.build(fixture(),NOW)))";
  const fixtureData=JSON.parse(execFileSync('python3',['-c',code],{cwd:root,encoding:'utf8'}));
  const host=d.createElement('div');d.body.appendChild(host);
  const fp=fixtureData.players['1|0'];w.CBBMatchup.mount(host,fp,fixtureData);
- assert.deepEqual(Array.from(host.querySelectorAll('[data-cma-section]'),b=>b.textContent),['Overview','Splits','Opponent','Similar players']);
+ assert.deepEqual(Array.from(host.querySelectorAll('[data-cma-section]'),b=>b.textContent),['Graph','Matchup','Share','Similar','Lineup']);
  assert(host.querySelector('svg'));
  for(const tab of host.querySelectorAll('[data-cma-section]')){tab.click();assert.equal(tab.getAttribute('aria-selected'),'true');assert(!host.querySelector('#'+tab.getAttribute('aria-controls')).hidden)}
  assert(!/undefined|NaN/.test(host.textContent));
+ // Synthetic graph: four actual 10-point games, 12-point existing projection, no fake next result.
+ host.querySelector('[data-cma-section="graph"]').click();
+ assert.equal(host.querySelectorAll('.cma-bar.below').length,4);
+ assert.equal(host.querySelectorAll('.cma-upcoming').length,1);
+ assert.match(host.querySelector('#cma-panel-graph').textContent,/Above projection0%/);
+ host.querySelector('[data-cma-window="L3"]').click();
+ assert.equal(host.querySelectorAll('.cma-bar').length,3);
+ host.querySelector('[data-cma-metric="reb"]').click();
+ assert.equal(host.querySelectorAll('.cma-threshold').length,0);
+ assert(!host.querySelector('#cma-panel-graph').textContent.includes('Above projection'));
+ // Without a real threshold, comparable results omit hit-rate and line/difference columns.
+ const noBenchmark=structuredClone(fp);noBenchmark.similar.forEach(r=>r.benchmark=null);
+ w.CBBMatchup.mount(host,noBenchmark,fixtureData);
+ const similar=host.querySelector('#cma-panel-similar');
+ assert(!/Above line|Above projection|Average difference/.test(similar.textContent));
  // Stale cached next-game timestamps must not resurrect a started matchup.
  const stale=structuredClone(an);stale.players['135|4848637'].next.start='2026-01-01T00:00Z';
  const x=env(stale);x.w.CBB.openPlayerModal('4848637','135');await wait();x.document.querySelector('#cbb-tab-matchup').click();await wait();
@@ -83,6 +112,14 @@ function env(data=an){
  w.CBBMatchup.mount(host,hostile,{...fixtureData,minimum_games:bad});
  assert.equal(host.querySelectorAll('img,[onerror],script').length,0);
  assert(host.textContent.includes(bad));
- console.log(JSON.stringify({realExample:row,entrypoints:7,profileUnchanged:true,syntheticFourTabs:true,xssEscaped:true},null,2));
+ const hostileData=structuredClone(fixtureData);
+ hostileData.rotations['1'].rows[0].name=bad;
+ hostileData.rotations['1'].rows[0].availability=bad;
+ hostileData.rotations['2'].rows[0].name=bad;
+ w.CBBMatchup.mount(host,fp,hostileData);
+ host.querySelector('[data-cma-pos="G"]').click(); // exercises re-render sink
+ host.querySelector('[data-cma-starters="Starters"]').click();
+ assert.equal(host.querySelectorAll('img,[onerror],script').length,0);
+ console.log(JSON.stringify({realExample:row,entrypoints:7,profileUnchanged:true,syntheticFiveTabs:true,xssEscaped:true},null,2));
  e.dom.window.close();
 })().catch(e=>{console.error(e);process.exitCode=1});
