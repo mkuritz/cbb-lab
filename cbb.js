@@ -108,7 +108,9 @@ function openPlayerModal(key,tid){
    +'<div style="font-size:21px;font-weight:900">'+E(p.n)+' '+(p.ap?'<span class="ap-tag">#'+p.ap+'</span>':'')+'</div>'
    +'<div class="mut sm" style="margin:3px 0">'+logo(p.tid,18)+' <a href="team.html?id='+p.tid+'" style="color:#7dd3fc;font-weight:700">'+E(p.team)+'</a> · '+E(p.conf)+' · '+bioBits.join(" · ")+'</div>'
    +'<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">'+roleBadge(p)+ptags(p)+'</div>'
-   +'</div></div>';
+   +'</div></div>'
+   +'<div class="cma-tabs cbb-profile-tabs" role="tablist" aria-label="Player details"><button type="button" role="tab" id="cbb-tab-profile" data-cbb-tab="profile" aria-selected="true" aria-controls="cbb-panel-profile">Profile</button><button type="button" role="tab" id="cbb-tab-matchup" data-cbb-tab="matchup" aria-selected="false" aria-controls="cbb-panel-matchup" tabindex="-1">Matchup</button></div>'
+   +'<div id="cbb-panel-profile" role="tabpanel" aria-labelledby="cbb-tab-profile">';
 
   if(p.nba_prospect||p.is_star){
    mHtml+='<div class="card" style="margin-top:12px;background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(19,35,63,.9));border-color:#a855f766;padding:10px 12px">'
@@ -163,9 +165,16 @@ function openPlayerModal(key,tid){
     +'<div style="margin-top:8px"><a href="team.html?id='+tm.id+'" class="chip" style="text-decoration:none;display:inline-block">Open Full '+E(tm.team)+' Roster &amp; Hub →</a></div></div>';
   }
 
-  mHtml+='</div>';
+  mHtml+='</div><div id="cbb-panel-matchup" role="tabpanel" aria-labelledby="cbb-tab-matchup" hidden></div></div>';
   ov.innerHTML=mHtml;
   document.body.appendChild(ov);
+  if(window.CBBMatchup){
+   CBBMatchup.tabs(ov,"data-cbb-tab");
+   var loaded=false, panel=ov.querySelector("#cbb-panel-matchup");
+   ov.querySelector("#cbb-tab-matchup").addEventListener("click",function(){if(!loaded){loaded=true;CBBMatchup.open(panel,p)}});
+   ov.querySelector(".cbb-profile-tabs").addEventListener("keydown",function(){if(!panel.hidden&&!loaded){loaded=true;CBBMatchup.open(panel,p)}});
+  }else{ov.querySelector("#cbb-tab-matchup").disabled=true}
+
   ov.onclick=function(e){if(e.target===ov)ov.remove()};
   var xb=ov.querySelector("#cbb-modal-x");
   if(xb)xb.onclick=function(){ov.remove()};

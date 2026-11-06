@@ -62,3 +62,14 @@
 .star-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:border-color .15s,transform .15s}
 .star-card:hover{border-color:#38d0f0;transform:translateY(-1px)}
 .star-card.nba{border-color:rgba(168,85,247,.45);background:linear-gradient(145deg,rgba(168,85,247,.1),var(--panel2) 65%)}
+
+/* Local preview: profile + display-only matchup analyzer. */
+#cbb-modal [hidden]{display:none!important}
+.cma{margin-top:12px;background:#101c31;border:1px solid #273958;border-radius:12px;padding:14px}
+.cma h3{margin:0 0 8px;font-size:16px}.cma h4{margin:16px 0 6px}
+.cma-tabs{display:flex;gap:4px;overflow-x:auto;background:#0a1221;padding:4px;border-radius:10px;margin:14px 0 10px}
+.cma-tabs button{min-height:40px;flex:1;white-space:nowrap;border:0;border-radius:7px;background:transparent;color:#94a3b8;font:700 13px system-ui;padding:8px 12px;cursor:pointer}
+.cma-tabs button[aria-selected="true"]{color:#e6edf6;background:#233650}.cma-tabs button:focus-visible{outline:2px solid #38d0f0;outline-offset:-2px}
+.cma-radar{display:block;width:100%;max-width:380px;margin:0 auto}.cma-table{overflow-x:auto}
+.cma-table table{width:100%;border-collapse:collapse;font-size:12px}.cma-table th,.cma-table td{padding:8px 6px;text-align:right;border-bottom:1px solid #273958}
+.cma-table th:first-child,.cma-table td:first-child{text-align:left;white-space:normal}.cma p{line-height:1.5}
