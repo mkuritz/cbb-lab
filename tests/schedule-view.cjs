@@ -172,9 +172,14 @@ const michigan = event({
       })
     ]
   };
+  const mini = {
+    fetched_at: '2026-11-07T11:00-05:00', season: '2026-27', failed: [],
+    games: Object.fromEntries(SV.parseScoreboard(payload).filter(game => SV.inCurrentSeason(game, '2026-27')).map(game => [game.id, game])),
+    byTeam: {170: SV.parseScoreboard(payload).filter(game => SV.inCurrentSeason(game, '2026-27')).map(game => game.id)},
+    byDate: {}
+  };
   SV.mountTeamScheduleToggle(host, {
-    teamName: 'Michigan', espnId: '130', tid: 170, now: NOW,
-    fetchImpl: async () => ({ok: true, json: async () => payload})
+    teamName: 'Michigan', espnId: '130', tid: 170, now: NOW, snapshot: mini
   });
   assert.equal(host.querySelector('#profile').outerHTML, before);
   assert.equal(host.querySelector('#team-schedule-panel').hidden, true);
@@ -199,7 +204,7 @@ const michigan = event({
   const missing = dom.window.document.createElement('div');
   missing.innerHTML = '<section id="profile">Kept</section>';
   const kept = missing.querySelector('#profile').outerHTML;
-  SV.mountTeamScheduleToggle(missing, {teamName: 'St. Francis (PA)', espnId: null, now: NOW, fetchImpl: async () => { throw new Error('no fetch'); }});
+  SV.mountTeamScheduleToggle(missing, {teamName: 'St. Francis (PA)', espnId: null, now: NOW});
   missing.querySelector('#team-schedule-toggle').click();
   await wait();
   assert.match(missing.querySelector('#team-schedule-panel').textContent, /Schedule unavailable/);
@@ -265,7 +270,12 @@ const michigan = event({
   await wait();
   assert.equal(fallbackHost.querySelector('#profile').outerHTML, keptProfile);
   assert.match(fallbackHost.querySelector('#team-schedule-panel').textContent, /UConn Huskies 85, Michigan Wolverines 77/);
-  assert.match(fallbackHost.querySelector('#team-schedule-panel').textContent, /Live ESPN request did not succeed/);
+  assert.match(fallbackHost.querySelector('#team-schedule-panel').textContent, /daily hub build/);
+  assert.match(fallbackHost.querySelector('#team-schedule-panel').textContent, /not a live ESPN page/);
+  assert.equal(SV.snapshotFreshness({fetched_at: '2026-11-07T11:00-05:00'}, NOW).stale, false);
+  assert.equal(SV.snapshotFreshness({fetched_at: '2026-11-05T11:00-05:00'}, NOW).stale, true);
+  assert.match(SV.snapshotCaption({fetched_at: '2026-11-05T11:00-05:00', failed: []}, NOW), /older than 36 hours/);
+  assert.doesNotMatch(SV.snapshotCaption({fetched_at: '2026-11-07T11:00-05:00', failed: []}, NOW), /older than 36 hours/);
   assert.doesNotMatch(fallbackHost.querySelector('#team-schedule-panel').textContent, /Marquette Golden Eagles 0/);
 
   console.log('schedule-view tests passed');

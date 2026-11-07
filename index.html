@@ -67,33 +67,19 @@ function ensureGameDay(rows){
 }
 var SNAP=null,SNAP_DONE=false;
 fetch("data/schedule_snapshot.json").then(function(r){return r.ok?r.json():null}).catch(function(){return null}).then(function(j){
- SNAP=j;SNAP_DONE=true;
- Object.keys(SB).forEach(function(k){if(SB[k]&&(SB[k].error||SB[k].waitSnapshot)) delete SB[k];});
- draw();
+ SNAP=j;SNAP_DONE=true;SB={};BY_ID={};draw();
 });
-function rememberGames(dateKey, games, snapshot){
- SB[dateKey]={error:false, games:games, snapshot:!!snapshot};
+function rememberGames(dateKey, games){
+ SB[dateKey]={error:false, games:games, snapshot:true};
  games.forEach(function(g){BY_ID[String(g.id)]=g;});
 }
 function loadBoard(dateKey){
  if(!dateKey||SB[dateKey]) return;
- SB[dateKey]={loading:true, games:[]};
+ if(!SNAP_DONE){SB[dateKey]={waitSnapshot:true, games:[]};return;}
  var season=ScheduleView.seasonLabel(new Date());
- var url=ScheduleView.espnScoreboardUrl(dateKey);
- function useSnapshot(){
-  var games=ScheduleView.snapshotDateGames(SNAP, dateKey, season);
-  if(games){rememberGames(dateKey, games, true);draw();return;}
-  if(!SNAP_DONE){SB[dateKey]={waitSnapshot:true, games:[]};return;}
-  SB[dateKey]={error:true, games:[]};draw();
- }
- if(!url){useSnapshot();return;}
- var ctrl=typeof AbortController==="function"?new AbortController():null;
- var timer=ctrl?setTimeout(function(){ctrl.abort();},8000):null;
- fetch(url, ctrl?{signal:ctrl.signal}:undefined).then(function(r){if(!r.ok) throw new Error(String(r.status));return r.json();}).then(function(j){
-  if(timer) clearTimeout(timer);
-  var games=ScheduleView.parseScoreboard(j).filter(function(g){return ScheduleView.inCurrentSeason(g, season);});
-  rememberGames(dateKey, games, false);draw();
- }).catch(function(){if(timer) clearTimeout(timer);useSnapshot();});
+ var games=SNAP?ScheduleView.snapshotDateGames(SNAP, dateKey, season):null;
+ if(games){rememberGames(dateKey, games);return;}
+ SB[dateKey]={error:true, games:[]};
 }
 function refreshBoards(){
  if(MT==="overview"||MT==="upsets") loadBoard(UPSET_DAY);
@@ -144,16 +130,16 @@ function drawSchedule(){
  var missing=D.teams.filter(function(t){return t.espnId==null||t.espnId==="";}).map(function(t){return t.team;});
  var tidByEspn={};
  D.teams.forEach(function(t){if(t.espnId!=null&&t.espnId!=="") tidByEspn[String(t.espnId)]=t.id;});
- var fallback=entry&&entry.snapshot?"Live ESPN request did not succeed. Showing the verified snapshot fetched "+((SNAP&&SNAP.fetched_at)||"at an unknown time")+".":"";
+ var fallback=SNAP?ScheduleView.snapshotCaption(SNAP, new Date()):"";
  ScheduleView.renderHubSchedule(el, {date:SCORE_DAY, season:ScheduleView.seasonLabel(new Date()), coverage:missing, linked:D.teams.length-missing.length, teamCount:D.teams.length, loading:!entry||!!entry.loading||!!(entry&&entry.waitSnapshot), error:!!(entry&&entry.error), games:(entry&&entry.games)||[], tidByEspn:tidByEspn, bounds:ScheduleView.seasonBounds(new Date()), now:new Date(), fallbackNote:fallback, onDate:function(v){SCORE_DAY=v;draw();}});
 }
 function finishDraw(){
+ refreshBoards();
  var sched=document.getElementById("sched-out");
  if(MT==="overview") drawSchedule();
  else if(sched) sched.replaceChildren();
  if(MT==="overview"||MT==="upsets"){bindUpsetDay();decorateUpsetCards();}
  if(MT==="overview"){bindGameDay();decorateGameCards();}
- refreshBoards();
 }
 function renderUpsetBin(limit){
  ensureUpsetDay();

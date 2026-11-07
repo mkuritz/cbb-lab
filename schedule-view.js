@@ -232,6 +232,28 @@
     }).filter(function (game) { return game && inCurrentSeason(game, season); });
   }
 
+  var STALE_HOURS = 36;
+
+  function snapshotFreshness(snapshot, now) {
+    var fetched = snapshot && snapshot.fetched_at ? new Date(snapshot.fetched_at) : null;
+    var known = !!(fetched && !isNaN(fetched.getTime()));
+    var hours = known ? (now.getTime() - fetched.getTime()) / 36e5 : null;
+    return { known: known, hours: hours, stale: !known || hours > STALE_HOURS };
+  }
+
+  function snapshotCaption(snapshot, now) {
+    var fresh = snapshotFreshness(snapshot, now || new Date());
+    var when = (snapshot && snapshot.fetched_at) || "an unknown time";
+    var text = "Schedule snapshot from the daily hub build, fetched " + when + ". This is the published file, not a live ESPN page.";
+    if (snapshot && snapshot.board_start && snapshot.board_end) {
+      text += " Division I board dates " + snapshot.board_start + " through " + snapshot.board_end + ".";
+    }
+    if (fresh.stale) text += " This snapshot is older than 36 hours.";
+    var failed = (snapshot && snapshot.failed) || [];
+    if (failed.length) text += " " + failed.length + " team schedule fetches failed and are not shown as covered.";
+    return text;
+  }
+
   function snapshotTeamGames(snapshot, tid, espnId, season) {
     if (!snapshot || snapshot.season !== season || !snapshot.byTeam || !snapshot.games) return null;
     var ids = snapshot.byTeam[String(tid)];
@@ -241,18 +263,6 @@
     }).filter(function (game) {
       return game && inCurrentSeason(game, season) && (String(game.homeEspn) === String(espnId) || String(game.awayEspn) === String(espnId));
     });
-  }
-
-  function espnScoreboardUrl(dateKey) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey || "")) return null;
-    var compact = dateKey.slice(0, 4) + dateKey.slice(5, 7) + dateKey.slice(8, 10);
-    return "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=" + compact + "&groups=50&limit=300";
-  }
-
-  function espnTeamScheduleUrl(espnId, year) {
-    if (!/^\d{1,8}$/.test(String(espnId || ""))) return null;
-    if (!/^\d{4}$/.test(String(year || ""))) return null;
-    return "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/" + espnId + "/schedule?season=" + year;
   }
 
   function renderDayBar(el, opts) {
@@ -353,15 +363,15 @@
     note.className = "mut sm";
     var coverage = (opts.linked || 0) + " of " + (opts.teamCount || 0) + " teams have an ESPN id.";
     if (opts.coverage && opts.coverage.length) coverage += " Unavailable: " + opts.coverage.join(", ") + ".";
-    note.textContent = "Season " + (opts.season || "unavailable") + ". America/New_York. Source: ESPN men's Division I scoreboard, the same public feed the Upset Radar build requests. Listed by tip time. No model win probability is shown on this board. " + coverage + (opts.fallbackNote ? " " + opts.fallbackNote : "");
+    note.textContent = "Season " + (opts.season || "unavailable") + ". America/New_York. Listed by tip time. No model win probability is on this board. " + coverage + (opts.fallbackNote ? " " + opts.fallbackNote : "");
     card.appendChild(note);
     if (opts.loading) {
       var loading = document.createElement("p");
-      loading.textContent = "Loading the ESPN Division I scoreboard for this day.";
+      loading.textContent = "Loading the schedule snapshot.";
       card.appendChild(loading);
     } else if (opts.error) {
       var error = document.createElement("p");
-      error.textContent = "ESPN scoreboard unavailable for this day. No scores were added.";
+      error.textContent = "Schedule snapshot unavailable for this day. No scores were added.";
       card.appendChild(error);
     } else {
       var games = (opts.games || []).filter(function (game) { return etDateKey(game.start) === opts.date; })
@@ -409,7 +419,7 @@
     panel.replaceChildren();
     var note = document.createElement("p");
     note.className = "mut sm";
-    note.textContent = "Season " + opts.season + ". America/New_York. Source: ESPN team schedule. Final scores appear only when the source status is final. This does not replace the roster, ratings, or props.";
+    note.textContent = "Season " + opts.season + ". America/New_York. Final scores appear only when the published snapshot status is final. This does not replace the roster, ratings, or props.";
     panel.appendChild(note);
     if (!games.length) {
       var empty = document.createElement("p");
@@ -469,43 +479,32 @@
         loaded = true;
         return;
       }
-      var url = espnTeamScheduleUrl(opts.espnId, bounds.espnYear);
-      if (!url || !bounds.label) {
-        panel.textContent = "Schedule unavailable. The season or team id could not be verified.";
+      if (!bounds.label) {
+        panel.textContent = "Schedule unavailable. The season could not be verified.";
         loaded = true;
         return;
       }
       loading = true;
-      panel.textContent = "Loading the " + bounds.label + " schedule.";
-      var fetchImpl = opts.fetchImpl || root.fetch;
-      Promise.resolve().then(function () { return fetchImpl(url); }).then(function (response) {
-        if (!response || !response.ok) throw new Error("schedule unavailable");
-        return response.json();
-      }).then(function (payload) {
-        var games = parseScoreboard(payload).filter(function (game) {
-          return inCurrentSeason(game, bounds.label) && (String(game.homeEspn) === String(opts.espnId) || String(game.awayEspn) === String(opts.espnId));
-        }).sort(function (a, b) { return String(a.start).localeCompare(String(b.start)); });
-        renderTeamSchedule(panel, games, { season: bounds.label, espnId: opts.espnId, now: opts.now || new Date() });
+      panel.textContent = "Loading the " + bounds.label + " schedule snapshot.";
+      var snapPromise = opts.snapshot ? Promise.resolve(opts.snapshot) : (root.fetch ? root.fetch("data/schedule_snapshot.json").then(function (response) {
+        return response && response.ok ? response.json() : null;
+      }).catch(function () { return null; }) : Promise.resolve(null));
+      snapPromise.then(function (snap) {
+        var failed = ((snap && snap.failed) || []).some(function (row) { return String(row.tid) === String(opts.tid); });
+        var games = snapshotTeamGames(snap, opts.tid, opts.espnId, bounds.label);
+        if (failed) {
+          panel.textContent = "Schedule fetch failed for " + (opts.teamName || "this team") + " on the last hub build. No scores were added.";
+        } else if (!games) {
+          panel.textContent = "Schedule snapshot unavailable for " + (opts.teamName || "this team") + ". No scores were added.";
+        } else {
+          renderTeamSchedule(panel, games, { season: bounds.label, espnId: opts.espnId, now: opts.now || new Date() });
+          var caption = document.createElement("p");
+          caption.className = "mut sm";
+          caption.textContent = snapshotCaption(snap, opts.now || new Date());
+          panel.insertBefore(caption, panel.firstChild);
+        }
         loaded = true;
         loading = false;
-      }).catch(function () {
-        var snapPromise = opts.snapshot ? Promise.resolve(opts.snapshot) : (root.fetch ? root.fetch("data/schedule_snapshot.json").then(function (response) {
-          return response && response.ok ? response.json() : null;
-        }).catch(function () { return null; }) : Promise.resolve(null));
-        snapPromise.then(function (snap) {
-          var games = snapshotTeamGames(snap, opts.tid, opts.espnId, bounds.label);
-          if (!games) {
-            panel.textContent = "Schedule source unavailable. No scores were added.";
-          } else {
-            renderTeamSchedule(panel, games, { season: bounds.label, espnId: opts.espnId, now: opts.now || new Date() });
-            var fallback = document.createElement("p");
-            fallback.className = "mut sm";
-            fallback.textContent = "Live ESPN request did not succeed. Showing the verified " + bounds.label + " snapshot fetched " + (snap.fetched_at || "at an unknown time") + ".";
-            panel.insertBefore(fallback, panel.firstChild);
-          }
-          loaded = true;
-          loading = false;
-        });
       });
     });
   }
@@ -530,8 +529,8 @@
     parseScoreboard: parseScoreboard,
     snapshotDateGames: snapshotDateGames,
     snapshotTeamGames: snapshotTeamGames,
-    espnScoreboardUrl: espnScoreboardUrl,
-    espnTeamScheduleUrl: espnTeamScheduleUrl,
+    snapshotFreshness: snapshotFreshness,
+    snapshotCaption: snapshotCaption,
     renderDayBar: renderDayBar,
     decorateStatus: decorateStatus,
     renderHubSchedule: renderHubSchedule,
