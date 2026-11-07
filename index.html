@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="https://sportslabshq.com/sl/ds.js?v=1"></script><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matchups, Upset Radar, 10-Game Rolling Segments &amp; Prop Hurdles · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css?v=cbb-matchup-2"><script src="https://sportslabshq.com/sl/sl-sports.js?v=2"></script><script src="navcfg.js"></script><script src="matchup-analyzer.js?v=cbb-matchup-2"></script><script src="cbb.js?v=cbb-matchup-2"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="https://sportslabshq.com/sl/ds.js?v=1"></script><meta name="viewport" content="width=device-width,initial-scale=1"><title>Matchups, Upset Radar, 10-Game Rolling Segments &amp; Prop Hurdles · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css?v=cbb-matchup-2"><script src="https://sportslabshq.com/sl/sl-sports.js?v=2"></script><script src="navcfg.js"></script><script src="matchup-analyzer.js?v=cbb-matchup-2"></script><script src="cbb.js?v=cbb-matchup-2"></script><script src="schedule-view.js?v=cbb-schedule-1"></script><style>.pend{opacity:.55}.pos{color:#8ee04a}.neg{color:#ff5d6c}td,th{white-space:nowrap}.pl{font-size:13px;line-height:1.6}
 .hub-nav-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;margin:10px 0;scrollbar-width:thin}
 .hub-nav-tabs button{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:7px 13px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap}
 .hub-nav-tabs button.on{background:#38d0f0;color:#041624;border-color:#38d0f0}
@@ -23,6 +23,7 @@
 <div class="ctl" id="top-ctl"><input class="v2" id="q-search" placeholder="Search team, player, conference…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px"><select class="v2" id="cf"><option value="">All D-I Conferences</option></select> <label class="sm"><input type="checkbox" id="pd"> show pending rosters</label> <a href="props.html" class="chip" style="text-decoration:none;margin-left:auto">🏀 Player Props (762) →</a> <a href="players.html" class="chip" style="text-decoration:none">📋 Starters, Minutes &amp; Usage →</a></div>
 
 <div id="tab-out"></div>
+<div id="sched-out"></div>
 <div id="gm-out"></div>
 <div id="out"></div>
 <footer>Projected change = our roster-based projection for 2026-27 minus last season's adjusted net rating (points per 100 possessions vs an average D-I team). Tempo (AdjT), efficiency (AdjO/AdjD), projected starters, minutes, usage rate (USG%), Rolling 10-Game Season Segments, Calculated Upset Radar, and Four-Factors style tags use preseason efficiency priors and returning/incoming D-I player rates. Ratings: barttorvik.com. Built only from last season's results and this offseason's roster moves; see <a href="method.html">Method</a>. Typical error ±5.7 pts. This is a projection, not a guarantee.</footer></div>
@@ -30,6 +31,7 @@
 <script>CBB.data(function(D){
 var E=CBB.E,QF="",MT="overview",ALLG=false,CLS_TAB="all",SEG_ACTIVE="g1_10",HURDLE_CAT="";
 var SIM_A=11,SIM_B=314,SIM_NEUT=true;
+var UPSET_DAY="",GAME_DAY="",SCORE_DAY="",SB={},BY_ID={};
 if(location.hash==="#upsets")MT="upsets";
 else if(location.hash==="#segments")MT="segments";
 else if(location.hash==="#hurdles")MT="hurdles";
@@ -52,22 +54,119 @@ function renderRibs(){
 
 function hasBadge(arr,k){return (arr||[]).some(b=>b.kind==k)}
 
+function ensureUpsetDay(){
+ var dates=ScheduleView.uniqueDates(D.upset_radar||[], function(u){return ScheduleView.etDateKey(u.start);});
+ if(!dates.length){UPSET_DAY="";return;}
+ if(!UPSET_DAY||dates.indexOf(UPSET_DAY)<0) UPSET_DAY=ScheduleView.nearestDate(dates, ScheduleView.etDateKey(new Date().toISOString()));
+}
+function ensureGameDay(rows){
+ var dates=ScheduleView.uniqueDates(rows, function(g){return ScheduleView.etDateKey(g.start);});
+ if(!dates.length){GAME_DAY="";return dates;}
+ if(!GAME_DAY||dates.indexOf(GAME_DAY)<0) GAME_DAY=ScheduleView.nearestDate(dates, ScheduleView.etDateKey(new Date().toISOString()));
+ return dates;
+}
+var SNAP=null,SNAP_DONE=false;
+fetch("data/schedule_snapshot.json").then(function(r){return r.ok?r.json():null}).catch(function(){return null}).then(function(j){
+ SNAP=j;SNAP_DONE=true;
+ Object.keys(SB).forEach(function(k){if(SB[k]&&(SB[k].error||SB[k].waitSnapshot)) delete SB[k];});
+ draw();
+});
+function rememberGames(dateKey, games, snapshot){
+ SB[dateKey]={error:false, games:games, snapshot:!!snapshot};
+ games.forEach(function(g){BY_ID[String(g.id)]=g;});
+}
+function loadBoard(dateKey){
+ if(!dateKey||SB[dateKey]) return;
+ SB[dateKey]={loading:true, games:[]};
+ var season=ScheduleView.seasonLabel(new Date());
+ var url=ScheduleView.espnScoreboardUrl(dateKey);
+ function useSnapshot(){
+  var games=ScheduleView.snapshotDateGames(SNAP, dateKey, season);
+  if(games){rememberGames(dateKey, games, true);draw();return;}
+  if(!SNAP_DONE){SB[dateKey]={waitSnapshot:true, games:[]};return;}
+  SB[dateKey]={error:true, games:[]};draw();
+ }
+ if(!url){useSnapshot();return;}
+ var ctrl=typeof AbortController==="function"?new AbortController():null;
+ var timer=ctrl?setTimeout(function(){ctrl.abort();},8000):null;
+ fetch(url, ctrl?{signal:ctrl.signal}:undefined).then(function(r){if(!r.ok) throw new Error(String(r.status));return r.json();}).then(function(j){
+  if(timer) clearTimeout(timer);
+  var games=ScheduleView.parseScoreboard(j).filter(function(g){return ScheduleView.inCurrentSeason(g, season);});
+  rememberGames(dateKey, games, false);draw();
+ }).catch(function(){if(timer) clearTimeout(timer);useSnapshot();});
+}
+function refreshBoards(){
+ if(MT==="overview"||MT==="upsets") loadBoard(UPSET_DAY);
+ if(MT==="overview"){if(!SCORE_DAY) SCORE_DAY=ScheduleView.etDateKey(new Date().toISOString());loadBoard(GAME_DAY);loadBoard(SCORE_DAY);}
+}
+function bindUpsetDay(){
+ var slot=document.getElementById("upset-day-slot");
+ if(!slot) return;
+ var dates=ScheduleView.uniqueDates(D.upset_radar||[], function(u){return ScheduleView.etDateKey(u.start);});
+ ScheduleView.renderDayBar(slot, {id:"upset-day", label:"Day", aria:"Calculated Upset Alert day", dates:dates, selected:UPSET_DAY, hint:"America/New_York. Within the day, highest published model dog win probability first.", onChange:function(v){UPSET_DAY=v;draw();}});
+}
+function decorateUpsetCards(){
+ document.querySelectorAll("[data-upset-id]").forEach(function(card){
+  var id=card.getAttribute("data-upset-id");
+  var u=(D.upset_radar||[]).find(function(r){return String(r.id)===id;});
+  if(!u) return;
+  var verified=BY_ID[id];
+  var st=ScheduleView.stateForPublished(u, verified, new Date());
+  var line=verified&&st.showScore?verified.awayName+" "+st.awayScore+", "+verified.homeName+" "+st.homeScore:"";
+  ScheduleView.decorateStatus(card, st, line);
+ });
+}
+function bindGameDay(){
+ var slot=document.getElementById("game-day-slot");
+ if(!slot) return;
+ var rows=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
+ var dates=ScheduleView.uniqueDates(rows, function(g){return ScheduleView.etDateKey(g.start);});
+ ScheduleView.renderDayBar(slot, {id:"game-day", label:"Day", aria:"Opening slate day", dates:dates, selected:GAME_DAY, hint:"America/New_York. Within the day, highest published model home win probability first.", onChange:function(v){GAME_DAY=v;draw();}});
+}
+function decorateGameCards(){
+ document.querySelectorAll("[data-game-id]").forEach(function(card){
+  var id=card.getAttribute("data-game-id");
+  var g=(D.games||[]).find(function(row){return String(row.id)===id;});
+  if(!g) return;
+  var verified=BY_ID[id];
+  var st=ScheduleView.stateForPublished(g, verified, new Date());
+  var line="";
+  if(verified&&st.showScore) line=verified.awayName+" "+st.awayScore+", "+verified.homeName+" "+st.homeScore;
+  else if(st.showScore&&g.away_name&&g.home_name) line=g.away_name+" "+st.awayScore+", "+g.home_name+" "+st.homeScore;
+  ScheduleView.decorateStatus(card, st, line);
+ });
+}
+function drawSchedule(){
+ var el=document.getElementById("sched-out");
+ if(!el) return;
+ if(!SCORE_DAY) SCORE_DAY=ScheduleView.etDateKey(new Date().toISOString());
+ var entry=SB[SCORE_DAY];
+ var missing=D.teams.filter(function(t){return t.espnId==null||t.espnId==="";}).map(function(t){return t.team;});
+ var tidByEspn={};
+ D.teams.forEach(function(t){if(t.espnId!=null&&t.espnId!=="") tidByEspn[String(t.espnId)]=t.id;});
+ var fallback=entry&&entry.snapshot?"Live ESPN request did not succeed. Showing the verified snapshot fetched "+((SNAP&&SNAP.fetched_at)||"at an unknown time")+".":"";
+ ScheduleView.renderHubSchedule(el, {date:SCORE_DAY, season:ScheduleView.seasonLabel(new Date()), coverage:missing, linked:D.teams.length-missing.length, teamCount:D.teams.length, loading:!entry||!!entry.loading||!!(entry&&entry.waitSnapshot), error:!!(entry&&entry.error), games:(entry&&entry.games)||[], tidByEspn:tidByEspn, bounds:ScheduleView.seasonBounds(new Date()), now:new Date(), fallbackNote:fallback, onDate:function(v){SCORE_DAY=v;draw();}});
+}
+function finishDraw(){
+ var sched=document.getElementById("sched-out");
+ if(MT==="overview") drawSchedule();
+ else if(sched) sched.replaceChildren();
+ if(MT==="overview"||MT==="upsets"){bindUpsetDay();decorateUpsetCards();}
+ if(MT==="overview"){bindGameDay();decorateGameCards();}
+ refreshBoards();
+}
 function renderUpsetBin(limit){
- var U=(D.upset_radar||[]).filter(u=>!cf.value||u.dog_conf===cf.value||u.fav_conf===cf.value);
+ ensureUpsetDay();
+ var U=(D.upset_radar||[]).filter(function(u){return ScheduleView.etDateKey(u.start)===UPSET_DAY;});
+ U=U.filter(u=>!cf.value||u.dog_conf===cf.value||u.fav_conf===cf.value);
  var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
  if(q)U=U.filter(u=>(u.dog+" "+u.fav+" "+u.dog_conf+" "+u.fav_conf).toLowerCase().includes(q));
+ U=ScheduleView.sortStableDesc(U, function(u){return u.dog_win_prob;});
  var list=limit?U.slice(0,limit):U;
- if(!list.length)return '<div class="card mut">No upset alerts match the current filter.</div>';
- return '<div class="card" style="margin-bottom:14px;border-color:rgba(255,93,108,.4)">'
-  +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-  +'<div><h3 style="margin:0">🚨 CBB Calculated Upset Alert Bin ("Upset Radar" · '+U.length+' Spotlights)</h3>'
-  +'<span class="mut sm">Flagged where home/neutral court splits, tempo/3PT/ORB style clashes, and Segment 1 (Games 1–10) veteran continuity give the underdog an outright win or cover edge · Ratings: barttorvik.com</span></div>'
-  +(limit&&U.length>limit?'<button type="button" class="chip" id="btn-all-upsets">View All '+U.length+' Upset Alerts →</button>':'')
-  +'</div>'
-  +'<div class="gl" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">'+list.map(function(u){
+ var cards=!list.length?'<div class="mut">No upset alerts match this day and filter.</div>':'<div class="gl" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">'+list.map(function(u){
    var wDog=Math.round(u.dog_win_prob*100),wMkt=Math.round(u.mkt_dog_prob*100);
    var isHigh=u.upset_score>=76;
-   return '<div class="upset-card '+(isHigh?"":"watch")+'">'
+   return '<div class="upset-card '+(isHigh?"":"watch")+'" data-upset-id="'+E(u.id)+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
     +'<span class="role-pill '+(isHigh?"tr":"bn")+'" style="'+(isHigh?"background:#ff5d6c26;color:#fda4af;border-color:#ff5d6c77":"")+'">'+E(u.tier)+' · Score '+u.upset_score+'/100</span>'
     +'<span class="mut sm">'+CBB.fmtT(u.start)+(u.neutral?" · Neutral":"")+'</span></div>'
@@ -82,7 +181,13 @@ function renderUpsetBin(limit){
     +'</div>'
     +(u.dog_star?'<div class="mut sm" style="display:flex;justify-content:space-between"><span>🔑 Dog Catalyst: <a href="#" class="plink" data-cbb-player="'+E(u.dog_star.id||u.dog_star.n)+'" data-cbb-tid="'+u.dog_id+'"><b>'+E(u.dog_star.n)+'</b></a> ('+u.dog_star.pts+' PPG · '+u.dog_star.usg+'% USG)</span><span>Tempo: '+u.pace+' poss</span></div>':'')
     +'</div>';
-  }).join("")+'</div></div>';
+  }).join("")+'</div>';
+ return '<div class="card" style="margin-bottom:14px;border-color:rgba(255,93,108,.4)">'
+  +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+  +'<div><h3 style="margin:0">🚨 CBB Calculated Upset Alert Bin ("Upset Radar" · '+U.length+' Spotlights)</h3>'
+  +'<span class="mut sm">Flagged where home/neutral court splits, tempo/3PT/ORB style clashes, and Segment 1 (Games 1–10) veteran continuity give the underdog an outright win or cover edge · Ratings: barttorvik.com</span></div>'
+  +(limit&&U.length>limit?'<button type="button" class="chip" id="btn-all-upsets">View All '+U.length+' Upset Alerts →</button>':'')
+  +'</div><div id="upset-day-slot" class="ctl"></div>'+cards+'</div>';
 }
 
 function renderSegmentsView(){
@@ -267,16 +372,19 @@ function erfApprox(x){
 function drawGames(){
  var el=document.getElementById("gm-out");
  if(MT!=="overview"){el.innerHTML="";return}
- var G=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
- if(!G.length){el.innerHTML="";return}
+ var filtered=(D.games||[]).filter(g=>(!cf.value||g.home_conf==cf.value||g.away_conf==cf.value)&&(!QF||(QF=="top25"?(g.home_rk||g.away_rk):hasBadge(g.badges,QF))));
+ if(!filtered.length){el.innerHTML="";return}
+ var dates=ensureGameDay(filtered);
+ var G=ScheduleView.sortStableDesc(ScheduleView.filterDay(filtered, GAME_DAY, function(g){return ScheduleView.etDateKey(g.start);}), function(g){return g.home_win;});
+ var span=ScheduleView.dayLabel(dates[0])+(dates.length>1?" – "+ScheduleView.dayLabel(dates[dates.length-1]):"");
  var show=ALLG?G:G.slice(0,6);
- el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Opening-Week Featured Matchups, Starters &amp; Player Props ('+G.length+')</h3><span class="mut sm">Nov 1–2 tip-off slate · Projected spread, tempo (possessions), starting lineups &amp; top player prop projections · Ratings: barttorvik.com</span></div><div style="display:flex;gap:6px"><a href="props.html" class="chip" style="text-decoration:none">All '+(D.props||[]).length+' Props →</a>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div></div><div class="gl">'+show.map(function(g){
+ el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Opening-Week Featured Matchups, Starters &amp; Player Props ('+G.length+')</h3><span class="mut sm">Published opening-slate model cards for '+E(ScheduleView.dayLabel(GAME_DAY))+'. Slate on file: '+E(span)+'. The daily ratings job does not rebuild these games or the player props. Win percentages are the published model values. Final scores are added only after the source verifies them. Ratings: barttorvik.com</span></div><div style="display:flex;gap:6px"><a href="props.html" class="chip" style="text-decoration:none">All '+(D.props||[]).length+' Props →</a>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div></div><div id="game-day-slot" class="ctl"></div>'+(G.length?'<div class="gl">':'<div class="mut">No opening-slate model cards on this day.</div><div class="gl" hidden>')+show.map(function(g){
   var sp=g.spread_home==0?"PK":g.spread_home<0?(g.home+" "+g.spread_home):(g.away+" -"+g.spread_home);
   var tp=(g.top_props||[]).slice(0,2);
   var tpHtml=tp.length?'<div class="gm-props-mini"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><span class="mut" style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">🎯 Top Projected Player Props</span><a href="props.html?game='+E(g.id)+'" style="font-size:10.5px;color:#38d0f0;font-weight:800;text-decoration:none">Game Props →</a></div>'+tp.map(function(p){
    return '<div class="gp-row"><span><a href="#" class="plink" data-cbb-player="'+E(p.aid||p.nm)+'" style="color:inherit;font-weight:700">'+E(p.nm)+'</a> <span class="mut">('+E(p.ab)+' · '+p.proj_min+'m · '+p.usg+'% USG)</span></span><span><b>'+E(p.side)+' '+p.line+' '+E(p.mk)+'</b> <span style="color:#8ee04a;font-weight:800">(Proj '+p.proj+')</span></span></div>';
   }).join("")+'</div>':'';
-  return '<div class="card gm" style="margin:0;background:var(--panel2)"><div class="mut sm">'+CBB.fmtT(g.start)+(g.neutral?" · Neutral":"")+(g.tv?" · 📺 "+E(g.tv):"")+'</div>'
+  return '<div class="card gm" data-game-id="'+E(g.id)+'" style="margin:0;background:var(--panel2)"><div class="mut sm">'+CBB.fmtT(g.start)+(g.neutral?" · Neutral":"")+(g.tv?" · 📺 "+E(g.tv):"")+'</div>'
    +'<div class="row"><b>'+(g.away_rk?'<span class="ap-tag">#'+g.away_rk+'</span>':'')+(g.away_tid?CBB.logo(g.away_tid,18)+' <a href="team.html?id='+g.away_tid+'" style="color:inherit;text-decoration:none">'+E(g.away_name)+'</a>':E(g.away_name))+'</b><span class="mut sm">'+E(g.away_conf||"")+'</span><b>'+Math.round((1-g.home_win)*100)+'%</b></div>'
    +'<div class="row"><b>'+(g.home_rk?'<span class="ap-tag">#'+g.home_rk+'</span>':'')+(g.home_tid?CBB.logo(g.home_tid,18)+' <a href="team.html?id='+g.home_tid+'" style="color:inherit;text-decoration:none">'+E(g.home_name)+'</a>':E(g.home_name))+'</b><span class="mut sm">'+E(g.home_conf||"")+'</span><b>'+Math.round(g.home_win*100)+'%</b></div>'
    +CBB.badgesHtml(g.badges)
@@ -284,7 +392,9 @@ function drawGames(){
    +tpHtml
    +'</div>';
  }).join("")+'</div></div>';
- var tg=document.getElementById("gm-tog");if(tg)tg.onclick=function(){ALLG=!ALLG;drawGames()};
+ var tg=document.getElementById("gm-tog");if(tg)tg.onclick=function(){ALLG=!ALLG;drawGames();bindGameDay();decorateGameCards();};
+ bindGameDay();
+ decorateGameCards();
 }
 
 function draw(){
@@ -294,6 +404,7 @@ function draw(){
   tabOut.innerHTML=renderUpsetBin(0);
   document.getElementById("gm-out").innerHTML="";
   out.innerHTML="";
+  finishDraw();
   return;
  }
  if(MT==="segments"){
@@ -301,6 +412,7 @@ function draw(){
   document.getElementById("gm-out").innerHTML="";
   out.innerHTML="";
   bindSegBtns();
+  finishDraw();
   return;
  }
  if(MT==="hurdles"){
@@ -308,6 +420,7 @@ function draw(){
   document.getElementById("gm-out").innerHTML="";
   out.innerHTML="";
   bindHurdleBtns();
+  finishDraw();
   return;
  }
  if(MT==="class"){
@@ -315,6 +428,7 @@ function draw(){
   document.getElementById("gm-out").innerHTML="";
   out.innerHTML="";
   bindClsBtns();
+  finishDraw();
   return;
  }
  if(MT==="sim"){
@@ -322,6 +436,7 @@ function draw(){
   document.getElementById("gm-out").innerHTML="";
   out.innerHTML="";
   bindSimBtns();
+  finishDraw();
   return;
  }
 
@@ -330,6 +445,7 @@ function draw(){
  var btnAllU=document.getElementById("btn-all-upsets");
  if(btnAllU)btnAllU.onclick=function(){MT="upsets";draw()};
  drawGames();
+ finishDraw();
  var q=(document.getElementById("q-search").value||"").toLowerCase().trim();
  var r=D.teams.filter(function(t){
   if(cf.value&&t.conf!=cf.value)return false;
