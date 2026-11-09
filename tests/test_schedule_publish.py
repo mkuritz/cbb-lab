@@ -32,7 +32,7 @@ def good(now=NOW, with_ids=None):
         "teams": 365,
         "linked": 364,
         "with_games": len(by_team),
-        "unavailable": [{"tid": 278, "team": "St. Francis (PA)", "reason": "no ESPN id"}],
+        "unavailable": [{"tid": 278, "team": "St. Francis (PA)", "reason": "no schedule link"}],
         "failed": [],
         "board_failed": [],
         "games": {"401920685": game},

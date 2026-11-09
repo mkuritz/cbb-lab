@@ -49,16 +49,29 @@
     }).format(d);
   }
 
-  function timeLabel(iso) {
+  function timeLabel(iso, timeTBD) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return "Unknown time";
     var date = new Intl.DateTimeFormat("en-US", {
       timeZone: TZ, weekday: "short", month: "short", day: "numeric"
     }).format(d);
+    if (timeTBD) return date + " · Time TBA";
     var time = new Intl.DateTimeFormat("en-US", {
       timeZone: TZ, hour: "numeric", minute: "2-digit"
     }).format(d);
     return date + " · " + time + " ET";
+  }
+
+  function tipSortKey(game) {
+    return [(game && game.timeTBD) ? 1 : 0, String((game && game.start) || "")];
+  }
+
+  function sortByTip(games) {
+    return (games || []).slice().sort(function (a, b) {
+      var ka = tipSortKey(a), kb = tipSortKey(b);
+      if (ka[0] !== kb[0]) return ka[0] - kb[0];
+      return ka[1] < kb[1] ? -1 : ka[1] > kb[1] ? 1 : 0;
+    });
   }
 
   function uniqueDates(items, dateFn) {
@@ -189,6 +202,8 @@
     var start = comp.date || event.date;
     if (!etDateKey(start)) return null;
     var status = ((comp.status || {}).type) || {};
+    var detail = [status.detail, status.shortDetail, status.description].join(" ");
+    var timeTBD = comp.timeValid === false || event.timeValid === false || /TBD/i.test(detail);
     return {
       id: String(event.id),
       start: start,
@@ -201,7 +216,8 @@
       homeScore: home.score,
       awayScore: away.score,
       statusType: status,
-      kind: kindFromStatus(status)
+      kind: kindFromStatus(status),
+      timeTBD: !!timeTBD
     };
   }
 
@@ -221,7 +237,8 @@
       awayName: row.awayName || "Unknown",
       homeScore: row.homeScore,
       awayScore: row.awayScore,
-      kind: row.kind || "unknown"
+      kind: row.kind || "unknown",
+      timeTBD: row.timeTBD === true
     };
   }
 
@@ -244,7 +261,7 @@
   function snapshotCaption(snapshot, now) {
     var fresh = snapshotFreshness(snapshot, now || new Date());
     var when = (snapshot && snapshot.fetched_at) || "an unknown time";
-    var text = "Schedule snapshot from the daily hub build, fetched " + when + ". This is the published file, not a live ESPN page.";
+    var text = "Schedule snapshot from the daily hub build, fetched " + when + ". This is the published file, not a live page.";
     if (snapshot && snapshot.board_start && snapshot.board_end) {
       text += " Division I board dates " + snapshot.board_start + " through " + snapshot.board_end + ".";
     }
@@ -361,7 +378,7 @@
     card.appendChild(bar);
     var note = document.createElement("p");
     note.className = "mut sm";
-    var coverage = (opts.linked || 0) + " of " + (opts.teamCount || 0) + " teams have an ESPN id.";
+    var coverage = (opts.linked || 0) + " of " + (opts.teamCount || 0) + " teams are linked to the schedule feed.";
     if (opts.coverage && opts.coverage.length) coverage += " Unavailable: " + opts.coverage.join(", ") + ".";
     note.textContent = "Season " + (opts.season || "unavailable") + ". America/New_York. Listed by tip time. No model win probability is on this board. " + coverage + (opts.fallbackNote ? " " + opts.fallbackNote : "");
     card.appendChild(note);
@@ -374,11 +391,10 @@
       error.textContent = "Schedule snapshot unavailable for this day. No scores were added.";
       card.appendChild(error);
     } else {
-      var games = (opts.games || []).filter(function (game) { return etDateKey(game.start) === opts.date; })
-        .slice().sort(function (a, b) { return String(a.start).localeCompare(String(b.start)); });
+      var games = sortByTip((opts.games || []).filter(function (game) { return etDateKey(game.start) === opts.date; }));
       if (!games.length) {
         var empty = document.createElement("p");
-        empty.textContent = "No Division I games on this date in the ESPN scoreboard.";
+        empty.textContent = "No Division I games on this date in the schedule snapshot.";
         card.appendChild(empty);
       } else {
         var list = document.createElement("div");
@@ -389,7 +405,7 @@
           var main = document.createElement("div");
           var time = document.createElement("div");
           time.className = "mut sm";
-          time.textContent = timeLabel(game.start) + (game.neutral ? " · Neutral" : "");
+          time.textContent = timeLabel(game.start, game.timeTBD) + (game.neutral ? " · Neutral" : "");
           var match = document.createElement("div");
           match.appendChild(teamLink(game.awayName, opts.tidByEspn && opts.tidByEspn[game.awayEspn]));
           match.appendChild(document.createTextNode(" at "));
@@ -428,7 +444,7 @@
       return;
     }
     var list = document.createElement("div");
-    games.forEach(function (game) {
+    sortByTip(games).forEach(function (game) {
       var home = String(game.homeEspn) === String(opts.espnId);
       var opp = home ? game.awayName : game.homeName;
       var state = displayState(game, opts.now);
@@ -437,7 +453,7 @@
       var main = document.createElement("div");
       var time = document.createElement("div");
       time.className = "mut sm";
-      time.textContent = timeLabel(game.start) + " · " + siteLabel(game, opts.espnId);
+      time.textContent = timeLabel(game.start, game.timeTBD) + " · " + siteLabel(game, opts.espnId);
       var who = document.createElement("div");
       who.textContent = opp;
       main.append(time, who);
@@ -475,7 +491,7 @@
       if (!open || loaded || loading) return;
       var bounds = seasonBounds(opts.now || new Date());
       if (opts.espnId == null || String(opts.espnId) === "") {
-        panel.textContent = "Schedule unavailable for " + (opts.teamName || "this team") + ". No ESPN id is stored on the team profile.";
+        panel.textContent = "Schedule unavailable for " + (opts.teamName || "this team") + ". No schedule link is stored on the team profile.";
         loaded = true;
         return;
       }
@@ -531,6 +547,7 @@
     snapshotTeamGames: snapshotTeamGames,
     snapshotFreshness: snapshotFreshness,
     snapshotCaption: snapshotCaption,
+    sortByTip: sortByTip,
     renderDayBar: renderDayBar,
     decorateStatus: decorateStatus,
     renderHubSchedule: renderHubSchedule,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only ESPN schedule snapshot for the existing daily hub build.
+"""Read-only schedule snapshot for the existing daily hub build.
 
 Does not modify data/cbb.json, model probabilities, or props.
 A rejected fetch leaves the previous snapshot file untouched.
@@ -147,13 +147,19 @@ def event_row(event, now, season):
     status = ((comp.get("status") or {}).get("type") or {})
     kind = resolve_kind(status, start, now)
     home_score, away_score = public_scores(kind, home.get("score"), away.get("score"))
+    detail = " ".join(str(status.get(k) or "") for k in ("detail", "shortDetail", "description"))
+    time_tbd = (
+        comp.get("timeValid") is False
+        or event.get("timeValid") is False
+        or "TBD" in detail.upper()
+    )
     def name(row):
         team = row.get("team") or {}
         return team.get("displayName") or team.get("shortDisplayName") or team.get("name") or "Unknown"
     def espn(row):
         team = row.get("team") or {}
         return None if team.get("id") is None else str(team.get("id"))
-    return str(event["id"]), {
+    row = {
         "start": start,
         "neutral": bool(comp.get("neutralSite")),
         "homeEspn": espn(home),
@@ -163,7 +169,9 @@ def event_row(event, now, season):
         "kind": kind,
         "homeScore": home_score,
         "awayScore": away_score,
+        "timeTBD": bool(time_tbd),
     }
+    return str(event["id"]), row
 
 
 def main():
@@ -176,7 +184,7 @@ def main():
     by_date = {}
     failed = []
     board_failed = []
-    unavailable = [{"tid": t["id"], "team": t["team"], "reason": "no ESPN id"} for t in teams if not t.get("espnId")]
+    unavailable = [{"tid": t["id"], "team": t["team"], "reason": "no schedule link"} for t in teams if not t.get("espnId")]
 
     def team_job(team):
         try:
@@ -208,7 +216,7 @@ def main():
             for gid, row in rows:
                 games[gid] = row
                 ids.append(gid)
-            ids.sort(key=lambda gid: games[gid]["start"])
+            ids.sort(key=lambda gid: (1 if games[gid].get("timeTBD") else 0, games[gid]["start"]))
             by_team[str(team["id"])] = ids
 
     # The hub day board is the Division I scoreboard, not every team-schedule opponent.
@@ -233,7 +241,7 @@ def main():
                 continue
             games[gid] = row
             ids.append(gid)
-        ids.sort(key=lambda gid: games[gid]["start"])
+        ids.sort(key=lambda gid: (1 if games[gid].get("timeTBD") else 0, games[gid]["start"]))
         by_date[iso] = ids
 
     snapshot = {
@@ -242,7 +250,7 @@ def main():
         "espn_season": espn_year,
         "board_start": days[0].isoformat(),
         "board_end": days[-1].isoformat(),
-        "source": "ESPN men's college basketball team schedule and Division I scoreboard",
+        "source": "public Division I team schedules and scoreboard",
         "teams": len(teams),
         "linked": len(linked),
         "with_games": sum(1 for ids in by_team.values() if ids),
