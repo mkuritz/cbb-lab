@@ -53,8 +53,18 @@ body.duel-on .sl-side{background:#0d191c;border-color:#223438;width:206px;font-s
 #duel-root{--vb:#111f22;--vp:#14272a;--vl:#263a3d;--vm:#32c9b5;--vt:#dfebea;--vs:#9db1b3;color:var(--vt);font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:1280px;margin:0 auto}
 #duel-root .vz-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:4px 0 16px}#duel-root .vz-heading h2{font-size:24px;line-height:1.2;font-weight:750;letter-spacing:-.6px;margin:3px 0 6px}#duel-root .vz-heading p{margin:0;color:var(--vs);font-size:14px}
 #duel-root .vz-eyebrow{font-size:10px;font-weight:750;color:#68adab;letter-spacing:1.3px}#duel-root .vz-status{display:flex;align-items:center;gap:7px;font:11px/1.4 ui-monospace,monospace;color:#a6bfbc;border:1px solid #2a4444;border-radius:4px;padding:5px 9px;white-space:nowrap}#duel-root .vz-status i{height:5px;width:5px;background:var(--vm);border-radius:50%}
-#duel-root .dl-ctl{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0 0 16px}#duel-root label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--vs);min-width:0}#duel-root label:first-child{flex:1 1 280px;max-width:420px}
-#duel-root select,#duel-root .dl-swap{width:100%;max-width:100%;min-height:40px;padding:8px 10px;border-radius:4px;border:1px solid var(--vl);background:#0e1c1f;color:var(--vt);font:inherit}#duel-root .dl-swap{cursor:pointer;width:auto}
+#duel-root .dl-ctl{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0 0 16px}#duel-root label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#a8c4bf;min-width:0}#duel-root label:first-child{flex:1 1 280px;max-width:420px}
+#duel-root select,#duel-root .dl-swap,#duel-root button{
+  appearance:none!important;-webkit-appearance:none!important;color-scheme:dark!important;
+  width:100%;max-width:100%;min-height:44px;padding:10px 14px;border-radius:10px;
+  border:1px solid #3a675c;background:#113d36;color:#eefaf5;font:inherit;
+  transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+#duel-root select{
+  padding-right:36px;
+  background:#113d36 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239dbfbb' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") right 14px center/12px no-repeat;
+  box-shadow:inset 0 1px 0 #ffffff08}
+#duel-root select:hover,#duel-root .dl-swap:hover{border-color:#7de4c3}
+#duel-root .dl-swap{cursor:pointer;width:auto;border-radius:999px;background:#174e40;border-color:#2f7a68;color:#b5ffe4;font-weight:750;padding:0 18px;min-width:96px}
 #duel-root .dl-lay{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr);gap:16px;align-items:start}
 #duel-root .card,#duel-root .dl-card{background:var(--vb);border:1px solid var(--vl);border-radius:6px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #00000012}#duel-root .dl-card h3{margin:0 0 12px;font-size:13px;font-weight:700;color:#d7e9e6}
 #duel-root .dl-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}#duel-root .dl-team{background:#14272a;border:1px solid #263c40;border-radius:6px;padding:14px}#duel-root .dl-team.a{border-color:#3a6f8a}#duel-root .dl-team.b{border-color:#8a4a52}
@@ -65,7 +75,7 @@ body.duel-on .sl-side{background:#0d191c;border-color:#223438;width:206px;font-s
 #duel-root :focus-visible{outline:2px solid var(--vm);outline-offset:2px}
 @media(min-width:768px){body.duel-on.sl-open{padding-left:206px}}
 @media(max-width:960px){#duel-root .dl-lay{grid-template-columns:1fr}}
-@media(max-width:600px){body.duel-on .w{padding:12px}#duel-root .vz-heading{flex-direction:column;gap:8px}#duel-root .vz-heading h2{font-size:21px}#duel-root .dl-pair{grid-template-columns:1fr}#duel-root .dl-team .big{font-size:28px}#duel-root label:first-child{flex:1 1 100%;max-width:none}}
+@media(max-width:600px){body.duel-on .w{padding:12px}#duel-root .vz-heading{flex-direction:column;gap:8px}#duel-root .vz-heading h2{font-size:21px}#duel-root .dl-pair{grid-template-columns:1fr}#duel-root .dl-team .big{font-size:28px}#duel-root label:first-child{flex:1 1 100%;max-width:none}#duel-root select,#duel-root .dl-swap{min-height:44px}}
 body.duel-on .sl-side .sl-brand{white-space:nowrap;font-size:15px}</style>`;
 function show(){const on=location.hash==='#duel';document.body.classList.toggle('duel-on',on);if(!root)return;root.hidden=!on;if(on&&D)draw()}
 function init(){document.head.insertAdjacentHTML('beforeend',CSS);root=document.createElement('section');root.id='duel-root';root.hidden=true;root.setAttribute('aria-live','polite');
