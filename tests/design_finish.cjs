@@ -1,0 +1,6 @@
+// DOM and data behaviour only: not browser visual verification.
+const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
+const ROOT=path.resolve(__dirname,'..'),D=JSON.parse(fs.readFileSync(path.join(ROOT,'data/cbb.json'),'utf8'));
+const dom=new JSDOM('<body><div id="main-tabs"></div></body>',{url:'https://unit.invalid/index.html#duel',runScripts:'outside-only'}),w=dom.window;
+w.CBB={data:f=>f(D)};w.eval(fs.readFileSync(path.join(ROOT,'cbb-duel.js'),'utf8'));
+setTimeout(()=>{try{const d=w.document,r=d.getElementById('duel-root');assert(r&&!r.hidden);assert.equal(r.querySelectorAll('.dl-team').length,2);assert.equal(r.querySelectorAll('.dl-definition').length,7);assert.equal(r.querySelectorAll('.dl-cmp tbody tr').length,7);assert(!r.querySelector('.dl-cmp tbody tr:last-child .dl-w'));assert(/Historical game/.test(r.querySelector('.dl-context').textContent));assert(/not a current line/.test(r.textContent));const s=w.CBBDuel.state,a=s.a,b=s.b;r.querySelector('.dl-swap').click();assert.equal(s.a,b);assert.equal(s.b,a);assert(/361 rated teams/.test(r.textContent));assert.equal(r.querySelectorAll('.dl-ev li').length,5);assert(r.querySelector('.dl-guide'));assert(!r.querySelector('iframe'));console.log('design_finish: 12 assertions passed');w.close()}catch(e){console.error(e);process.exitCode=1}},60);
