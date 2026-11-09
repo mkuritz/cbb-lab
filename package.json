@@ -1,1 +1,1 @@
-{"name":"cbb-profile-matchup-preview-tests","private":true,"scripts":{"test":"python3 -m unittest discover -s tests -p 'test_*.py' && node tests/matchup-dom.cjs"},"devDependencies":{"jsdom":"^26.1.0"}}
+{"name":"cbb-profile-matchup-preview-tests","private":true,"scripts":{"test":"python3 -m unittest discover -s tests -p 'test_*.py' && node tests/matchup-dom.cjs && node tests/schedule-view.cjs"},"devDependencies":{"jsdom":"^26.1.0"}}

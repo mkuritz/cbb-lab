@@ -63,6 +63,9 @@
 .star-card:hover{border-color:#38d0f0;transform:translateY(-1px)}
 .star-card.nba{border-color:rgba(168,85,247,.45);background:linear-gradient(145deg,rgba(168,85,247,.1),var(--panel2) 65%)}
 
+.sched-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.sched-row .sched-status{flex:none;font-weight:800;text-align:right;max-width:46%}
+@media(max-width:720px){.sched-row{flex-direction:column}.sched-row .sched-status{text-align:left;max-width:none}}
 /* Local preview: profile + display-only matchup analyzer. */
 #cbb-modal [hidden]{display:none!important}
 .cma{margin-top:12px;background:#101c31;border:1px solid #273958;border-radius:12px;padding:14px}

@@ -8,6 +8,7 @@ Never touches sl_ncaamb_game_pricer.py or sl_ncaamb_pricer.py constants. Preserv
 """
 import json, math, os, urllib.request, collections, datetime as dt
 from zoneinfo import ZoneInfo
+from schedule_status import include_in_radar, public_scores, resolve_kind
 
 CBB_JSON = os.environ.get("CBB_JSON") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cbb.json")   # repo-relative (was a hard-coded box path)
 ET = ZoneInfo("America/New_York")
@@ -26,7 +27,8 @@ def prob_to_am(p):
 def fetch_espn_nov_games(espn_to_t):
     games = []
     seen = set()
-    t0 = dt.datetime.now(ET).date()   # rolling window (was a fixed list of November dates)
+    now = dt.datetime.now(ET)
+    t0 = now.date()   # rolling window (was a fixed list of November dates)
     days = tuple((t0 + dt.timedelta(days=k)).strftime("%Y%m%d") for k in range(-1, 15))
     for day in days:
         u = f"https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates={day}&groups=50&limit=200"
@@ -49,6 +51,8 @@ def fetch_espn_nov_games(espn_to_t):
                 seen.add(eid)
                 venue = (c.get("venue") or {}).get("fullName") or ""
                 tv = ", ".join(b for x in c.get("broadcasts", []) for b in x.get("names", []))
+                kind = resolve_kind((c.get("status") or {}).get("type") or {}, e.get("date"), now)
+                home_score, away_score = public_scores(kind, hm_c.get("score"), aw_c.get("score"))
                 games.append({
                     "id": eid,
                     "start": e.get("date"),
@@ -57,6 +61,9 @@ def fetch_espn_nov_games(espn_to_t):
                     "tv": tv,
                     "away_t": aw_t,
                     "home_t": hm_t,
+                    "game_state": kind,
+                    "home_score": home_score,
+                    "away_score": away_score,
                 })
         except Exception as ex:
             print("ESPN scoreboard fetch warn:", day, ex)
@@ -114,6 +121,10 @@ def main():
     upset_radar = []
 
     for g in raw_nov:
+        # Completed, postponed, cancelled, and unverified past games stay off the
+        # alert list. The scoreboard still shows them with their real status.
+        if not include_in_radar(g.get("game_state")):
+            continue
         aw = g["away_t"]
         hm = g["home_t"]
         neutral = g["neutral"]
@@ -210,6 +221,9 @@ def main():
         upset_radar.append({
             "id": g["id"],
             "start": g["start"],
+            "game_state": g.get("game_state"),
+            "home_score": g.get("home_score"),
+            "away_score": g.get("away_score"),
             "neutral": neutral,
             "venue": g["venue"],
             "tv": g["tv"],
