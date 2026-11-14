@@ -1,8 +1,16 @@
 name: Deploy GitHub Pages
+# Hub builds commit with GITHUB_TOKEN, which does not trigger on: push, so Pages
+# stayed on the last manual deploy. workflow_run publishes after every successful
+# "CBB Hub daily build". Checkout main on that event so we pick up the data commit,
+# not the SHA the build started on.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CBB Hub daily build"]
+    types:
+      - completed
 permissions:
   contents: read
   pages: write
@@ -12,12 +20,15 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
