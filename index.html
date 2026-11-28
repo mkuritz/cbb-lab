@@ -20,7 +20,7 @@
 
 <div class="grib" id="qrib" aria-label="Style and Top 25 filters"></div>
 <div class="grib" id="crib" aria-label="Quick conference filter"></div>
-<div class="ctl" id="top-ctl"><input class="v2" id="q-search" placeholder="Search team, player, conference…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px"><select class="v2" id="cf"><option value="">All D-I Conferences</option></select> <label class="sm"><input type="checkbox" id="pd"> show pending rosters</label> <a href="props.html" class="chip" style="text-decoration:none;margin-left:auto">🏀 Player Props (762) →</a> <a href="players.html" class="chip" style="text-decoration:none">📋 Starters, Minutes &amp; Usage →</a></div>
+<div class="ctl" id="top-ctl"><input class="v2" id="q-search" placeholder="Search team, player, conference…" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px"><select class="v2" id="cf"><option value="">All D-I Conferences</option></select> <label class="sm"><input type="checkbox" id="pd"> show pending rosters</label> <a href="props.html" class="chip" style="text-decoration:none;margin-left:auto">🏀 Player Props →</a> <a href="players.html" class="chip" style="text-decoration:none">📋 Starters, Minutes &amp; Usage →</a></div>
 
 <div id="tab-out"></div>
 <div id="sched-out"></div>
@@ -364,7 +364,7 @@ function drawGames(){
  var G=ScheduleView.sortStableDesc(ScheduleView.filterDay(filtered, GAME_DAY, function(g){return ScheduleView.etDateKey(g.start);}), function(g){return g.home_win;});
  var span=ScheduleView.dayLabel(dates[0])+(dates.length>1?" – "+ScheduleView.dayLabel(dates[dates.length-1]):"");
  var show=ALLG?G:G.slice(0,6);
- el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Opening-Week Featured Matchups, Starters &amp; Player Props ('+G.length+')</h3><span class="mut sm">Published opening-slate model cards for '+E(ScheduleView.dayLabel(GAME_DAY))+'. Slate on file: '+E(span)+'. The daily ratings job does not rebuild these games or the player props. Win percentages are the published model values. Final scores are added only after the source verifies them. Ratings: barttorvik.com</span></div><div style="display:flex;gap:6px"><a href="props.html" class="chip" style="text-decoration:none">All '+(D.props||[]).length+' Props →</a>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div></div><div id="game-day-slot" class="ctl"></div>'+(G.length?'<div class="gl">':'<div class="mut">No opening-slate model cards on this day.</div><div class="gl" hidden>')+show.map(function(g){
+ el.innerHTML='<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div><h3 style="margin:0">🏀 Featured Matchups, Starters &amp; Player Props ('+G.length+')</h3><span class="mut sm">Published opening-slate model cards for '+E(ScheduleView.dayLabel(GAME_DAY))+'. Slate on file: '+E(span)+'. The daily ratings job does not rebuild these games or the player props. Win percentages are the published model values. Final scores are added only after the source verifies them. Ratings: barttorvik.com</span></div><div style="display:flex;gap:6px"><a href="props.html" class="chip" style="text-decoration:none">All '+(D.props||[]).length+' Props →</a>'+(G.length>6?'<button type="button" class="chip" id="gm-tog">'+(ALLG?"Show Top 6":"Show All "+G.length+" Matchups")+'</button>':'')+'</div></div><div id="game-day-slot" class="ctl"></div>'+(G.length?'<div class="gl">':'<div class="mut">No opening-slate model cards on this day.</div><div class="gl" hidden>')+show.map(function(g){
   var sp=g.spread_home==0?"PK":g.spread_home<0?(g.home+" "+g.spread_home):(g.away+" -"+g.spread_home);
   var tp=(g.top_props||[]).slice(0,2);
   var tpHtml=tp.length?'<div class="gm-props-mini"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><span class="mut" style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">🎯 Top Projected Player Props</span><a href="props.html?game='+E(g.id)+'" style="font-size:10.5px;color:#38d0f0;font-weight:800;text-decoration:none">Game Props →</a></div>'+tp.map(function(p){
@@ -426,7 +426,7 @@ function draw(){
   return;
  }
 
- // Overview tab: Top 6 Upset Alerts preview + Featured Opening-Week Matchups + 365-Team Table with 10-Game Segment & Lead Starter
+ // Overview tab: Top 6 Upset Alerts preview + Featured Matchups + 365-Team Table with 10-Game Segment & Lead Starter
  tabOut.innerHTML=renderUpsetBin(6);
  var btnAllU=document.getElementById("btn-all-upsets");
  if(btnAllU)btnAllU.onclick=function(){MT="upsets";draw()};

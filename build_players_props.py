@@ -111,6 +111,199 @@ def assign_slots(starters):
     for idx, p in enumerate(ordered[:5]):
         p["slot"] = slots[idx]
 
+def select_players(D, all_players):
+    """Featured player list: top 650 by impact, plus stars, prospects, ranked-team players and every player on a slate team."""
+    slate_tids = set()
+    for g in D.get("games", []):
+        if g.get("away_tid"):
+            slate_tids.add(g["away_tid"])
+        if g.get("home_tid"):
+            slate_tids.add(g["home_tid"])
+
+    all_players.sort(key=lambda x: -(
+        (10.0 if x.get("nba_tier") == "NBA Lottery" else (6.0 if x.get("nba_prospect") else 0.0))
+        + (4.0 if x.get("is_star") else 0.0)
+        + x.get("proj_pts", 0) * 1.2
+        + (x.get("ws") or 0) * 1.8
+        + (3.0 if x.get("ap") else 0.0)
+    ))
+    kept_players = []
+    kept_keys = set()
+    for p in all_players:
+        k = (p["tid"], p["n"])
+        if len(kept_players) < 650 or p.get("ap") or p["tid"] in slate_tids or p.get("nba_prospect") or p.get("is_star"):
+            if k not in kept_keys and p.get("proj_min", 0) >= 8.0:
+                kept_keys.add(k)
+                kept_players.append(p)
+    D["players"] = kept_players
+    return kept_players
+
+def build_props(D):
+    """Model props + per-game starters/top_props for D["games"]. Needs only published cbb.json (teams[].rot), no private cache."""
+    teams_by_id = {t["id"]: t for t in D["teams"]}
+    # Build D["props"] for the Featured Matchups (D["games"])
+    props = []
+    for g_idx, g in enumerate(D.get("games", [])):
+        gid = str(g["id"])
+        pace = g.get("pace") or 69.0
+        pace_mult = (pace / 68.5) ** 0.65
+        away_t = teams_by_id.get(g.get("away_tid"))
+        home_t = teams_by_id.get(g.get("home_tid"))
+        if not away_t or not home_t:
+            continue
+
+        g["away_starters"] = [
+            {"id": p["id"], "n": p["n"], "pos": p["pos"], "slot": p.get("slot", "G"), "min": p["proj_min"], "usg": p["usg"], "pts": p["proj_pts"], "reb": p["proj_reb"], "ast": p["proj_ast"], "is_star": p.get("is_star"), "nba_tier": p.get("nba_tier")}
+            for p in (away_t.get("rot") or [])[:5]
+        ]
+        g["home_starters"] = [
+            {"id": p["id"], "n": p["n"], "pos": p["pos"], "slot": p.get("slot", "G"), "min": p["proj_min"], "usg": p["usg"], "pts": p["proj_pts"], "reb": p["proj_reb"], "ast": p["proj_ast"], "is_star": p.get("is_star"), "nba_tier": p.get("nba_tier")}
+            for p in (home_t.get("rot") or [])[:5]
+        ]
+
+        for side_team, opp_team, is_home in ((away_t, home_t, False), (home_t, away_t, True)):
+            opp_adjd = opp_team.get("adjD") or 103.0
+            def_mult = (opp_adjd / 102.5) ** 0.60
+            rot = [p for p in (side_team.get("rot") or [])[:6] if p.get("proj_min", 0) >= 18.0]
+            for p_idx, p in enumerate(rot):
+                mk_specs = [
+                    ("Points", p["proj_pts"] * pace_mult * def_mult, p["proj_pts"], 4.6),
+                    ("Rebounds", p["proj_reb"] * (pace_mult ** 0.5), p["proj_reb"], 2.3),
+                    ("Assists", p["proj_ast"] * (pace_mult ** 0.5) * (def_mult ** 0.4), p["proj_ast"], 1.7),
+                    ("PRA", (p["proj_pts"] * pace_mult * def_mult) + (p["proj_reb"] * (pace_mult ** 0.5)) + (p["proj_ast"] * (pace_mult ** 0.5)), p["proj_pra"], 5.8),
+                ]
+                if p.get("proj_tpm", 0) >= 1.3 or p.get("tpm", 0) >= 1.3:
+                    mk_specs.append(("3PM", p["proj_tpm"] * (pace_mult ** 0.45) * (def_mult ** 0.45), p["proj_tpm"], 1.15))
+
+                for mk, raw_proj, base_val, sd in mk_specs:
+                    if mk == "Points" and base_val < 7.5:
+                        continue
+                    if mk == "Rebounds" and base_val < 3.2:
+                        continue
+                    if mk == "Assists" and base_val < 2.2:
+                        continue
+                    if mk == "PRA" and base_val < 13.5:
+                        continue
+
+                    half_line = math.floor(base_val) + 0.5
+                    if base_val - math.floor(base_val) < 0.22 and half_line > 1.5:
+                        half_line -= 1.0
+                    proj_val = round(raw_proj, 1)
+                    blended = 0.65 * proj_val + 0.35 * half_line
+                    z = (blended - half_line) / sd
+                    p_over = round(min(0.69, max(0.31, norm_cdf(z))), 3)
+                    side = "Over" if p_over >= 0.5 else "Under"
+                    win_p = p_over if side == "Over" else round(1.0 - p_over, 3)
+
+                    fair_over = round(0.5 + (p_over - 0.5) * 0.48, 3)
+                    fair_side = fair_over if side == "Over" else round(1.0 - fair_over, 3)
+                    edge_val = round(win_p - fair_side, 3)
+
+
+                    style_notes = []
+                    if pace >= 70.5:
+                        style_notes.append(f"Pace-up track meet ({pace} poss)")
+                    elif pace <= 66.5:
+                        style_notes.append(f"Half-court tempo ({pace} poss)")
+                    else:
+                        style_notes.append(f"Proj tempo {pace} poss")
+                    if opp_adjd <= 96.5:
+                        style_notes.append(f"vs #{opp_team.get('adjD_rk', 25)} Torvik AdjD ({opp_adjd:.1f})")
+                    elif opp_adjd >= 104.5:
+                        style_notes.append(f"Soft D funnel ({opp_team['ab']} {opp_adjd:.1f} AdjD)")
+                    if p.get("nba_tier"):
+                        style_notes.append(p["nba_tier"])
+                    elif p.get("origin") == "Transfer" and p.get("prev_team"):
+                        style_notes.append(f"Transfer from {p['prev_team']}")
+
+                    why = f"{p['role']} ({p.get('slot') or p['pos']}) · {p['proj_min']} proj min · {p['usg']}% USG · " + " · ".join(style_notes)
+
+                    props.append({
+                        "id": f"{gid}-{p['id'] or p['n']}-{mk}",
+                        "aid": p["id"],
+                        "nm": p["n"],
+                        "hs": p["hs"],
+                        "t": side_team["id"],
+                        "team": side_team["team"],
+                        "ab": side_team["ab"],
+                        "conf": side_team["conf"],
+                        "ap": side_team.get("ap"),
+                        "opp_id": opp_team["id"],
+                        "opp": opp_team["team"],
+                        "opp_ab": opp_team["ab"],
+                        "opp_adjd": opp_adjd,
+                        "opp_adjd_rk": opp_team.get("adjD_rk"),
+                        "pos": p["pos"],
+                        "slot": p.get("slot") or p["pos"],
+                        "yr": p.get("yr") or "",
+                        "yr_short": p.get("yr_short") or "",
+                        "ht": p.get("ht"),
+                        "starter": p["starter"],
+                        "role": p["role"],
+                        "is_star": p.get("is_star"),
+                        "star_tier": p.get("star_tier"),
+                        "nba_prospect": p.get("nba_prospect"),
+                        "nba_tier": p.get("nba_tier"),
+                        "origin": p["origin"],
+                        "prev_team": p.get("prev_team"),
+                        "proj_min": p["proj_min"],
+                        "usg": p["usg"],
+                        "mpg": p["mpg"],
+                        "ppg": p["ppg"],
+                        "rpg": p["rpg"],
+                        "apg": p["apg"],
+                        "tpm": p["tpm"],
+                        "efg": p["efg"],
+                        "ts": p["ts"],
+                        "ortg": p["ortg"],
+                        "ws": p["ws"],
+                        "mk": mk,
+                        "line": half_line,
+                        "proj": proj_val,
+                        "side": side,
+                        "ours": p_over,
+                        "fair": fair_over,
+                        "edge": edge_val,
+                        "best": None,   # no market price is attached to model lines (was a synthetic Book A-D / -108..-112 stamp)
+                        "nb": 0,
+                        "gid": gid,
+                        "matchup": f"{g['away']} @ {g['home']}",
+                        "matchup_full": f"{g['away_name']} @ {g['home_name']}",
+                        "start": g["start"],
+                        "pace": pace,
+                        "why": why,
+                        "badges": (g.get("badges") or [])[:2],
+                    })
+
+    props.sort(key=lambda x: (-(x.get("edge") or 0), not x.get("starter"), x.get("ap") or 99))
+    D["props"] = props
+
+    props_by_gid = {}
+    for pr in props:
+        if pr["mk"] in ("Points", "PRA", "Rebounds", "Assists"):
+            props_by_gid.setdefault(str(pr["gid"]), []).append(pr)
+    for g in D.get("games", []):
+        g_pr = props_by_gid.get(str(g["id"]), [])
+        g["top_props"] = [
+            {
+                "aid": x["aid"],
+                "nm": x["nm"],
+                "ab": x["ab"],
+                "pos": x["pos"],
+                "slot": x["slot"],
+                "proj_min": x["proj_min"],
+                "usg": x["usg"],
+                "mk": x["mk"],
+                "side": x["side"],
+                "line": x["line"],
+                "proj": x["proj"],
+                "edge": x["edge"],
+                "is_star": x.get("is_star"),
+                "nba_tier": x.get("nba_tier"),
+            }
+            for x in g_pr[:3]
+        ]
+
 def main():
     D = json.load(open(CBB_JSON))
     ps_raw = json.load(open(f"{RAW_DIR}/pstats_2026.json"))
@@ -506,196 +699,9 @@ def main():
     opportunities.sort(key=lambda x: -(x["pts_diff"] * 1.4 + (x["ws"] or 0) * 0.6 + (3.0 if x.get("ap") else 0.0)))
     D["opportunities"] = opportunities[:45]
 
-    slate_tids = set()
-    for g in D.get("games", []):
-        if g.get("away_tid"):
-            slate_tids.add(g["away_tid"])
-        if g.get("home_tid"):
-            slate_tids.add(g["home_tid"])
+    select_players(D, all_players)
 
-    all_players.sort(key=lambda x: -(
-        (10.0 if x.get("nba_tier") == "NBA Lottery" else (6.0 if x.get("nba_prospect") else 0.0))
-        + (4.0 if x.get("is_star") else 0.0)
-        + x.get("proj_pts", 0) * 1.2
-        + (x.get("ws") or 0) * 1.8
-        + (3.0 if x.get("ap") else 0.0)
-    ))
-    kept_players = []
-    kept_keys = set()
-    for p in all_players:
-        k = (p["tid"], p["n"])
-        if len(kept_players) < 650 or p.get("ap") or p["tid"] in slate_tids or p.get("nba_prospect") or p.get("is_star"):
-            if k not in kept_keys and p.get("proj_min", 0) >= 8.0:
-                kept_keys.add(k)
-                kept_players.append(p)
-    D["players"] = kept_players
-
-    # Build D["props"] for Opening-Week Featured Matchups
-    props = []
-    BOOKS = ["Book A", "Book B", "Book C", "Book D"]
-    for g_idx, g in enumerate(D.get("games", [])):
-        gid = str(g["id"])
-        pace = g.get("pace") or 69.0
-        pace_mult = (pace / 68.5) ** 0.65
-        away_t = teams_by_id.get(g.get("away_tid"))
-        home_t = teams_by_id.get(g.get("home_tid"))
-        if not away_t or not home_t:
-            continue
-
-        g["away_starters"] = [
-            {"id": p["id"], "n": p["n"], "pos": p["pos"], "slot": p.get("slot", "G"), "min": p["proj_min"], "usg": p["usg"], "pts": p["proj_pts"], "reb": p["proj_reb"], "ast": p["proj_ast"], "is_star": p.get("is_star"), "nba_tier": p.get("nba_tier")}
-            for p in (away_t.get("rot") or [])[:5]
-        ]
-        g["home_starters"] = [
-            {"id": p["id"], "n": p["n"], "pos": p["pos"], "slot": p.get("slot", "G"), "min": p["proj_min"], "usg": p["usg"], "pts": p["proj_pts"], "reb": p["proj_reb"], "ast": p["proj_ast"], "is_star": p.get("is_star"), "nba_tier": p.get("nba_tier")}
-            for p in (home_t.get("rot") or [])[:5]
-        ]
-
-        for side_team, opp_team, is_home in ((away_t, home_t, False), (home_t, away_t, True)):
-            opp_adjd = opp_team.get("adjD") or 103.0
-            def_mult = (opp_adjd / 102.5) ** 0.60
-            rot = [p for p in (side_team.get("rot") or [])[:6] if p.get("proj_min", 0) >= 18.0]
-            for p_idx, p in enumerate(rot):
-                mk_specs = [
-                    ("Points", p["proj_pts"] * pace_mult * def_mult, p["proj_pts"], 4.6),
-                    ("Rebounds", p["proj_reb"] * (pace_mult ** 0.5), p["proj_reb"], 2.3),
-                    ("Assists", p["proj_ast"] * (pace_mult ** 0.5) * (def_mult ** 0.4), p["proj_ast"], 1.7),
-                    ("PRA", (p["proj_pts"] * pace_mult * def_mult) + (p["proj_reb"] * (pace_mult ** 0.5)) + (p["proj_ast"] * (pace_mult ** 0.5)), p["proj_pra"], 5.8),
-                ]
-                if p.get("proj_tpm", 0) >= 1.3 or p.get("tpm", 0) >= 1.3:
-                    mk_specs.append(("3PM", p["proj_tpm"] * (pace_mult ** 0.45) * (def_mult ** 0.45), p["proj_tpm"], 1.15))
-
-                for mk, raw_proj, base_val, sd in mk_specs:
-                    if mk == "Points" and base_val < 7.5:
-                        continue
-                    if mk == "Rebounds" and base_val < 3.2:
-                        continue
-                    if mk == "Assists" and base_val < 2.2:
-                        continue
-                    if mk == "PRA" and base_val < 13.5:
-                        continue
-
-                    half_line = math.floor(base_val) + 0.5
-                    if base_val - math.floor(base_val) < 0.22 and half_line > 1.5:
-                        half_line -= 1.0
-                    proj_val = round(raw_proj, 1)
-                    blended = 0.65 * proj_val + 0.35 * half_line
-                    z = (blended - half_line) / sd
-                    p_over = round(min(0.69, max(0.31, norm_cdf(z))), 3)
-                    side = "Over" if p_over >= 0.5 else "Under"
-                    win_p = p_over if side == "Over" else round(1.0 - p_over, 3)
-
-                    fair_over = round(0.5 + (p_over - 0.5) * 0.48, 3)
-                    fair_side = fair_over if side == "Over" else round(1.0 - fair_over, 3)
-                    edge_val = round(win_p - fair_side, 3)
-
-                    bk = BOOKS[(g_idx + p_idx + len(mk)) % len(BOOKS)]
-                    best_odds = -108 if edge_val >= 0.035 else (-110 if edge_val >= 0.015 else -112)
-                    nb = 3 + ((g_idx + p_idx) % 3)
-
-                    style_notes = []
-                    if pace >= 70.5:
-                        style_notes.append(f"Pace-up track meet ({pace} poss)")
-                    elif pace <= 66.5:
-                        style_notes.append(f"Half-court tempo ({pace} poss)")
-                    else:
-                        style_notes.append(f"Proj tempo {pace} poss")
-                    if opp_adjd <= 96.5:
-                        style_notes.append(f"vs #{opp_team.get('adjD_rk', 25)} Torvik AdjD ({opp_adjd:.1f})")
-                    elif opp_adjd >= 104.5:
-                        style_notes.append(f"Soft D funnel ({opp_team['ab']} {opp_adjd:.1f} AdjD)")
-                    if p.get("nba_tier"):
-                        style_notes.append(p["nba_tier"])
-                    elif p.get("origin") == "Transfer" and p.get("prev_team"):
-                        style_notes.append(f"Transfer from {p['prev_team']}")
-
-                    why = f"{p['role']} ({p.get('slot') or p['pos']}) · {p['proj_min']} proj min · {p['usg']}% USG · " + " · ".join(style_notes)
-
-                    props.append({
-                        "id": f"{gid}-{p['id'] or p['n']}-{mk}",
-                        "aid": p["id"],
-                        "nm": p["n"],
-                        "hs": p["hs"],
-                        "t": side_team["id"],
-                        "team": side_team["team"],
-                        "ab": side_team["ab"],
-                        "conf": side_team["conf"],
-                        "ap": side_team.get("ap"),
-                        "opp_id": opp_team["id"],
-                        "opp": opp_team["team"],
-                        "opp_ab": opp_team["ab"],
-                        "opp_adjd": opp_adjd,
-                        "opp_adjd_rk": opp_team.get("adjD_rk"),
-                        "pos": p["pos"],
-                        "slot": p.get("slot") or p["pos"],
-                        "yr": p.get("yr") or "",
-                        "yr_short": p.get("yr_short") or "",
-                        "ht": p.get("ht"),
-                        "starter": p["starter"],
-                        "role": p["role"],
-                        "is_star": p.get("is_star"),
-                        "star_tier": p.get("star_tier"),
-                        "nba_prospect": p.get("nba_prospect"),
-                        "nba_tier": p.get("nba_tier"),
-                        "origin": p["origin"],
-                        "prev_team": p.get("prev_team"),
-                        "proj_min": p["proj_min"],
-                        "usg": p["usg"],
-                        "mpg": p["mpg"],
-                        "ppg": p["ppg"],
-                        "rpg": p["rpg"],
-                        "apg": p["apg"],
-                        "tpm": p["tpm"],
-                        "efg": p["efg"],
-                        "ts": p["ts"],
-                        "ortg": p["ortg"],
-                        "ws": p["ws"],
-                        "mk": mk,
-                        "line": half_line,
-                        "proj": proj_val,
-                        "side": side,
-                        "ours": p_over,
-                        "fair": fair_over,
-                        "edge": edge_val,
-                        "best": [best_odds, bk],
-                        "nb": nb,
-                        "gid": gid,
-                        "matchup": f"{g['away']} @ {g['home']}",
-                        "matchup_full": f"{g['away_name']} @ {g['home_name']}",
-                        "start": g["start"],
-                        "pace": pace,
-                        "why": why,
-                        "badges": (g.get("badges") or [])[:2],
-                    })
-
-    props.sort(key=lambda x: (-(x.get("edge") or 0), not x.get("starter"), x.get("ap") or 99))
-    D["props"] = props
-
-    props_by_gid = {}
-    for pr in props:
-        if pr["mk"] in ("Points", "PRA", "Rebounds", "Assists"):
-            props_by_gid.setdefault(str(pr["gid"]), []).append(pr)
-    for g in D.get("games", []):
-        g_pr = props_by_gid.get(str(g["id"]), [])
-        g["top_props"] = [
-            {
-                "aid": x["aid"],
-                "nm": x["nm"],
-                "ab": x["ab"],
-                "pos": x["pos"],
-                "slot": x["slot"],
-                "proj_min": x["proj_min"],
-                "usg": x["usg"],
-                "mk": x["mk"],
-                "side": x["side"],
-                "line": x["line"],
-                "proj": x["proj"],
-                "edge": x["edge"],
-                "is_star": x.get("is_star"),
-                "nba_tier": x.get("nba_tier"),
-            }
-            for x in g_pr[:3]
-        ]
+    build_props(D)
 
     D["ratings_credit"] = "Ratings: barttorvik.com"
     json.dump(D, open(CBB_JSON, "w"), separators=(",", ":"))

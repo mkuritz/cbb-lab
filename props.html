@@ -15,7 +15,7 @@
  var Q=new URLSearchParams(location.search),qG=Q.get("game"),qMk=Q.get("mk");
  if(qG)GF=qG;
  if(qMk)MK=qMk;
- sub.textContent=P.length+" player prop projections across "+(D.games||[]).length+" Opening-Week matchups · Projected starters, minutes (MIN), usage rate (USG%), tempo & opponent defense adjustments · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
+ sub.textContent=P.length+" player prop projections across "+(D.games||[]).length+" featured matchups (today & tomorrow) · Projected starters, minutes (MIN), usage rate (USG%), tempo & opponent defense adjustments · "+(D.ratings_credit||"Ratings: barttorvik.com")+".";
 
  function renderRibs(){
   var games=D.games||[];
@@ -61,7 +61,7 @@
    +CBB.badgesHtml(p.badges)
    +'<div class="tiles" style="margin-top:8px"><div class="tile"><div class="l">'+E(p.mk)+'</div><div class="v">'+E(p.side)+' '+p.line+'</div></div><div class="tile"><div class="l">Ours</div><div class="v">'+CBB.pc(po)+'</div></div><div class="tile"><div class="l">Book Fair</div><div class="v">'+CBB.pc(pf)+'</div></div></div>'
    +'<div class="mut sm" style="margin-top:6px;line-height:1.4">'+E(p.why)+'</div>'
-   +'<div class="mrow" style="margin-top:6px">'+CBB.edge(p.edge)+'<span style="margin-left:auto">Best '+(p.best?CBB.am(p.best[0])+' <span class="mut">'+E(p.best[1])+'</span>':'—')+'</span><span class="mut sm">'+p.nb+' books</span></div>'
+   +'<div class="mrow" style="margin-top:6px">'+CBB.edge(p.edge)+'<span style="margin-left:auto">Best '+(p.best?CBB.am(p.best[0])+' <span class="mut">'+E(p.best[1])+'</span>':'—')+'</span>'+(p.nb?'<span class="mut sm">'+p.nb+' books</span>':'<span class="mut sm">model line · no market price</span>')+'</div>'
    +CBB.stakeHtml(po,pf,p.best?p.best[0]:null,p.side+" "+p.line+" "+p.mk)
    +'<div style="display:flex;gap:6px;margin-top:8px;justify-content:space-between;align-items:center">'
    +'<button type="button" class="chip sm" data-cbb-player="'+E(p.aid||p.nm)+'" data-cbb-tid="'+p.t+'" style="font-size:11px;padding:4px 8px">📊 Player Splits &amp; Usage</button>'

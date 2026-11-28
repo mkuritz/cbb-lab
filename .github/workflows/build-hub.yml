@@ -3,7 +3,10 @@ name: CBB Hub daily build
 # Rebuilds data/cbb.json from free public feeds (schedule, rolling Upset Radar, conference board), stamps the model
 # build time + the ratings as-of time, and flags the model stale when it is >36h behind the ratings.
 # Also refreshes data/schedule_snapshot.json on this same run and publishes it with data/cbb.json.
-# The schedule cron is unchanged. Player/prop enrichment needs the private roster cache, which only exists on the sl-box backup runner.
+# The schedule cron is unchanged. Roster rebuild (build_players_props.py main) needs the private roster cache, which only exists on the sl-box backup runner.
+# Slate refresh (Nov 27): refresh_slate.py rebuilds today + tomorrow's Featured Matchups, starters and model props from published data on EVERY run
+# (the games list used to be written once for the Nov 1-3 opening week and never refreshed); fetch_game_logs.py adds real completed-game logs from free ESPN box
+# scores; build_matchup_analyzer.py rebuilds matchup_an.json from them. 0 Odds API credits.
 on:
   workflow_dispatch:
   schedule:
@@ -17,7 +20,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ${{ vars.RUNNER_MODE == 'box' && fromJSON('["self-hosted","sl-box"]') || 'ubuntu-latest' }}   # GitHub-hosted primary; sl-box backup
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +30,14 @@ jobs:
       - name: Player props enrichment (sl-box only; needs private roster cache)
         continue-on-error: true
         run: if [ -f /workspace/cbbhub-v1/raw/pstats_2026.json ]; then python3 build_players_props.py; else echo "No private roster cache on this runner; players/props kept from the last box build"; fi
+      - name: Refresh featured slate (today + tomorrow; games, starters, model props)
+        run: python3 refresh_slate.py
+      - name: Player game logs (free ESPN box scores; cached in data/game_logs.json)
+        continue-on-error: true
+        run: python3 scripts/fetch_game_logs.py
+      - name: Matchup analyzer data
+        continue-on-error: true
+        run: python3 scripts/build_matchup_analyzer.py
       - name: Check freshness
         run: python3 -c "import json;d=json.load(open('data/cbb.json'));print('built',d['built'],'ratings_as_of',d.get('ratings_as_of'),'stale',d.get('stale'));assert len(d['teams'])>=350"
       - name: Refresh schedule snapshot
@@ -38,9 +49,11 @@ jobs:
           git config user.email "41898475+github-actions[bot]@users.noreply.github.com"
           cp data/cbb.json /tmp/cbb.json
           cp data/schedule_snapshot.json /tmp/schedule_snapshot.json
+          cp data/matchup_an.json /tmp/matchup_an.json
+          cp data/game_logs.json /tmp/game_logs.json 2>/dev/null || true
           for i in 1 2 3; do
-            git fetch -q origin main && git reset -q --hard origin/main && cp /tmp/cbb.json data/cbb.json && cp /tmp/schedule_snapshot.json data/schedule_snapshot.json
-            git add data/cbb.json data/schedule_snapshot.json
+            git fetch -q origin main && git reset -q --hard origin/main && cp /tmp/cbb.json data/cbb.json && cp /tmp/schedule_snapshot.json data/schedule_snapshot.json && cp /tmp/matchup_an.json data/matchup_an.json && { [ ! -f /tmp/game_logs.json ] || cp /tmp/game_logs.json data/game_logs.json; }
+            git add data/cbb.json data/schedule_snapshot.json data/matchup_an.json data/game_logs.json
             if git diff --cached --quiet; then echo "No change"; break; fi
             git commit -qm "CBB Hub data $(TZ=America/New_York date '+%Y-%m-%d %H:%M %Z')" && git push -q && break
             sleep 5
