@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="https://sportslabshq.com/sl/ds.js?v=1"></script><meta name="viewport" content="width=device-width,initial-scale=1"><title>Player Props · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css?v=cbb-matchup-2"><script src="https://sportslabshq.com/sl/sl-sports.js?v=2"></script><script src="navcfg.js"></script><script src="tailcard.js?v=1"></script><script src="matchup-analyzer.js?v=cbb-matchup-2"></script><script src="cbb.js?v=cbb-matchup-2"></script><script src="https://sportslabshq.com/sl/sl.js?v=12" defer></script></head><body><div class="w"><h2 style="margin-top:14px">Player Props &amp; Matchup Projections</h2><p class="mut sm" id="sub"></p>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="https://sportslabshq.com/sl/ds.js?v=1"></script><meta name="viewport" content="width=device-width,initial-scale=1"><title>Player Props · CBB Hub · Sports Labs</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="v2.css"><link rel="stylesheet" href="cbb.css?v=cbb-matchup-2"><script src="https://sportslabshq.com/sl/sl-sports.js?v=2"></script><script src="navcfg.js"></script><script src="tailcard.js?v=1"></script><script src="matchup-analyzer.js?v=cbb-matchup-2"></script><script src="cbb.js?v=cbb-model-fair-1"></script><script src="https://sportslabshq.com/sl/sl.js?v=12" defer></script></head><body><div class="w"><h2 style="margin-top:14px">Player Props &amp; Matchup Projections</h2><p class="mut sm" id="sub"></p>
 <div id="kbar"></div>
 <div class="grib" id="gmrib" aria-label="Prop game filter"></div>
 <div class="grib" id="mkrib" aria-label="Market quick filter"></div>
@@ -59,7 +59,7 @@
    +'<div class="mut sm" style="margin-top:2px">'+E(p.matchup)+' · '+CBB.fmtT(p.start)+'</div></div>'
    +'<div class="proj"><b>'+p.proj+'</b><span>OUR PROJ</span></div></div>'
    +CBB.badgesHtml(p.badges)
-   +'<div class="tiles" style="margin-top:8px"><div class="tile"><div class="l">'+E(p.mk)+'</div><div class="v">'+E(p.side)+' '+p.line+'</div></div><div class="tile"><div class="l">Ours</div><div class="v">'+CBB.pc(po)+'</div></div><div class="tile"><div class="l">Book Fair</div><div class="v">'+CBB.pc(pf)+'</div></div></div>'
+   +'<div class="tiles" style="margin-top:8px"><div class="tile"><div class="l">'+E(p.mk)+'</div><div class="v">'+E(p.side)+' '+p.line+'</div></div><div class="tile"><div class="l">Ours</div><div class="v">'+CBB.pc(po)+'</div></div><div class="tile"><div class="l">Model Fair</div><div class="v">'+CBB.pc(pf)+'</div></div></div>'
    +'<div class="mut sm" style="margin-top:6px;line-height:1.4">'+E(p.why)+'</div>'
    +'<div class="mrow" style="margin-top:6px">'+CBB.edge(p.edge)+'<span style="margin-left:auto">Best '+(p.best?CBB.am(p.best[0])+' <span class="mut">'+E(p.best[1])+'</span>':'—')+'</span>'+(p.nb?'<span class="mut sm">'+p.nb+' books</span>':'<span class="mut sm">model line · no market price</span>')+'</div>'
    +CBB.stakeHtml(po,pf,p.best?p.best[0]:null,p.side+" "+p.line+" "+p.mk)
@@ -70,7 +70,7 @@
  }
 
  function tab(R){
-  return '<div class="card wrap" style="padding:0"><table><tr><th>Player</th><th>Role</th><th>Proj Min</th><th>USG%</th><th>Matchup</th><th>Market</th><th>Line</th><th>Our Proj</th><th>Ours</th><th>Fair</th><th>Edge</th><th>Best</th></tr>'
+  return '<div class="card wrap" style="padding:0"><table><tr><th>Player</th><th>Role</th><th>Proj Min</th><th>USG%</th><th>Matchup</th><th>Market</th><th>Line</th><th>Our Proj</th><th>Ours</th><th>Model Fair</th><th>Model Edge</th><th>Best</th></tr>'
    +R.map(function(p){
     var po=p.side==="Over"?p.ours:(1-p.ours),pf=p.side==="Over"?p.fair:(1-p.fair);
     return '<tr><td>'+nmLink(p)+' <span class="mut sm">'+E(p.ab)+'</span></td><td>'+CBB.roleBadge(p)+'</td><td><b>'+p.proj_min+'</b></td><td>'+p.usg+'%</td><td class="sm mut">'+E(p.matchup)+'</td><td><b>'+E(p.mk)+'</b></td><td>'+E(p.side)+' '+p.line+'</td><td><b>'+p.proj+'</b></td><td>'+CBB.pc(po)+'</td><td>'+CBB.pc(pf)+'</td><td>'+CBB.edge(p.edge)+'</td><td>'+(p.best?CBB.am(p.best[0])+' '+E(p.best[1]):'—')+'</td></tr>';
@@ -97,8 +97,8 @@
     hub:"CBB HUB · PLAYER PROPS",
     title:p.nm+" ("+p.ab+" "+p.pos+" · "+p.role+")",
     sub:p.side+" "+p.line+" "+p.mk+" · Proj "+p.proj+" · "+p.proj_min+" MIN / "+p.usg+"% USG",
-    rows:[{player:p.nm,market:p.mk,line:p.line,meta:p.why,rightTop:p.best?CBB.am(p.best[0])+" ("+p.best[1]+")":"—",rightBot:"Edge "+(p.edge>=0?"+":"")+(p.edge*100).toFixed(1)+"%"}],
-    footerLeft:"Our Model: "+CBB.pc(po)+" vs Fair "+CBB.pc(pf),
+    rows:[{player:p.nm,market:p.mk,line:p.line,meta:p.why,rightTop:p.best?CBB.am(p.best[0])+" ("+p.best[1]+")":"—",rightBot:"Model edge "+(p.edge>=0?"+":"")+(p.edge*100).toFixed(1)+"%"}],
+    footerLeft:"Our model: "+CBB.pc(po)+" vs model fair "+CBB.pc(pf),
     footerRight:"cbblab.sportslabshq.com · 21+",
     filename:"cbblab-"+p.nm.toLowerCase().replace(/[^a-z0-9]+/g,"-")+".png"
    });

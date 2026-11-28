@@ -13,7 +13,7 @@ function logo(t,sz){
  var x=Array.isArray(D.teams)?D.teams.find(function(r){return r.id==t}):D.teams[t];
  return x&&x.logo?'<img class="tl" src="'+E(x.logo)+'" alt="'+E(x.ab||x.team)+'" style="width:'+(sz||20)+'px;height:'+(sz||20)+'px;vertical-align:middle">':'';
 }
-function edge(e){return e==null?'<span class="edge" title="Needs 2+ books">EDGE —</span>':'<span class="edge '+(e>=0?"p":"n")+'">EDGE '+(e>=0?"+":"")+(e*100).toFixed(1)+'%</span>'}
+function edge(e){return e==null?'<span class="edge" title="Model edge, not a market price">MODEL EDGE —</span>':'<span class="edge '+(e>=0?"p":"n")+'" title="Model edge, not a market price">MODEL EDGE '+(e>=0?"+":"")+(e*100).toFixed(1)+'%</span>'}
 function badgesHtml(arr){
  if(!arr||!arr.length)return"";
  return '<div class="cbadges">'+arr.map(function(b){return '<span class="cbadge '+E(b.kind||"")+'">'+E(b.txt)+'</span>'}).join("")+'</div>';
@@ -39,7 +39,7 @@ try{
 function saveK(){try{localStorage.setItem("sl_cbb_kelly",JSON.stringify(KS));localStorage.setItem("sl_bankroll",String(KS.bk));if(KS.m>0)localStorage.setItem("sl_kelly",String(KS.m))}catch(e){}}
 function kellyBar(el,cb){
  if(!el)return;
- el.innerHTML='<div class="kbar"><label>💰 Bankroll ($)<input type="number" id="cbb-bk" min="50" step="50" value="'+KS.bk+'"></label><div class="kbtns" role="group" aria-label="Kelly multiplier">'+[[0.25,"0.25x Kelly"],[0.5,"0.5x Kelly"],[1.0,"1.0x Full"],[0,"Flat 1%"]].map(function(x){return '<button type="button" data-km="'+x[0]+'" class="'+(KS.m===x[0]?"on":"")+'">'+x[1]+'</button>'}).join("")+'</div><span class="mut sm" style="margin-left:auto">Exact $ stake &amp; Model vs. Benchmark Fair Line Edge on every prop (capped at 5% bankroll)</span></div>';
+ el.innerHTML='<div class="kbar"><label>💰 Bankroll ($)<input type="number" id="cbb-bk" min="50" step="50" value="'+KS.bk+'"></label><div class="kbtns" role="group" aria-label="Kelly multiplier">'+[[0.25,"0.25x Kelly"],[0.5,"0.5x Kelly"],[1.0,"1.0x Full"],[0,"Flat 1%"]].map(function(x){return '<button type="button" data-km="'+x[0]+'" class="'+(KS.m===x[0]?"on":"")+'">'+x[1]+'</button>'}).join("")+'</div><span class="mut sm" style="margin-left:auto">Exact $ stake &amp; model vs. model fair line (model edge) on every prop (capped at 5% bankroll)</span></div>';
  var inp=el.querySelector("#cbb-bk");
  if(inp)inp.onchange=function(){var v=Math.max(10,parseFloat(inp.value)||1000);KS.bk=v;saveK();if(cb)cb()};
  el.querySelectorAll("[data-km]").forEach(function(b){b.onclick=function(){KS.m=parseFloat(b.getAttribute("data-km"));saveK();kellyBar(el,cb);if(cb)cb()}});
@@ -49,15 +49,15 @@ function stakeHtml(oursP,fairP,amOdds,sideLabel){
  var diff=oursP-fairP;
  var p=diff>=0?oursP:(1-oursP),q=diff>=0?fairP:(1-fairP),ed=p-q;
  var pW=Math.min(100,Math.max(4,Math.round(p*1000)/10)),qW=Math.min(97,Math.max(3,Math.round(q*1000)/10));
- var gauge='<div class="cbb-edge-viz" title="Our Fair '+pc(p)+' vs Benchmark Fair '+pc(q)+'"><div class="cev-hd"><span>📊 Our Model <b>'+pc(p)+'</b>'+(sideLabel?" ("+E(sideLabel)+")":"")+'</span><span>Fair <b>'+pc(q)+'</b> · <b class="'+(ed>=0.008?"up":"mut")+'">'+(ed>=0?"+":"")+(ed*100).toFixed(1)+'% Edge</b></span></div><div class="cev-track"><div class="cev-fill" style="width:'+pW+'%"></div><div class="cev-tick" style="left:'+qW+'%" title="Fair '+pc(q)+'"></div></div></div>';
- if(Math.abs(diff)<0.008)return gauge+'<div class="krow"><span class="mut">Model vs Fair: aligned ('+pc(oursP)+' vs '+pc(fairP)+')</span><span class="mut">$0 Pass</span></div>';
+ var gauge='<div class="cbb-edge-viz" title="Our model '+pc(p)+' vs model fair '+pc(q)+'"><div class="cev-hd"><span>📊 Our Model <b>'+pc(p)+'</b>'+(sideLabel?" ("+E(sideLabel)+")":"")+'</span><span>Model fair <b>'+pc(q)+'</b> · <b class="'+(ed>=0.008?"up":"mut")+'">'+(ed>=0?"+":"")+(ed*100).toFixed(1)+'% model edge</b></span></div><div class="cev-track"><div class="cev-fill" style="width:'+pW+'%"></div><div class="cev-tick" style="left:'+qW+'%" title="Model fair '+pc(q)+'"></div></div></div>';
+ if(Math.abs(diff)<0.008)return gauge+'<div class="krow"><span class="mut">Model vs model fair: aligned ('+pc(oursP)+' vs '+pc(fairP)+')</span><span class="mut">$0 Pass</span></div>';
  var bDec=(amOdds!=null)?(amOdds>0?amOdds/100:100/-amOdds):(100/110);
  var f=Math.max(0,(p*bDec-(1-p))/bDec);
  var frac=KS.m===0?0.01:Math.min(0.05,f*KS.m);
  var stake=Math.round(KS.bk*frac*100)/100;
  var evPct=((p*(bDec+1)-1)*100);
  if(stake<=0&&ed>0.01){stake=Math.round(KS.bk*Math.min(0.03,ed*(KS.m||0.25))*100)/100}
- return gauge+'<div class="krow"><span class="kst">💵 Stake $'+stake.toFixed(2)+(sideLabel?" · "+E(sideLabel):"")+'</span><span class="mut">Ours <b>'+pc(p)+'</b> vs Fair <b>'+pc(q)+'</b> ('+(ed>=0?"+":"")+(ed*100).toFixed(1)+'% edge'+(evPct>0?' · +$'+Math.max(0.1,stake*Math.max(ed,evPct/100)).toFixed(2)+' EV':'')+')</span></div>';
+ return gauge+'<div class="krow"><span class="kst">💵 Stake $'+stake.toFixed(2)+(sideLabel?" · "+E(sideLabel):"")+'</span><span class="mut">Ours <b>'+pc(p)+'</b> vs model fair <b>'+pc(q)+'</b> ('+(ed>=0?"+":"")+(ed*100).toFixed(1)+'% model edge'+(evPct>0?' · +$'+Math.max(0.1,stake*Math.max(ed,evPct/100)).toFixed(2)+' EV':'')+')</span></div>';
 }
 
 function findPlayer(key,tid){
@@ -150,7 +150,7 @@ function openPlayerModal(key,tid){
 
   if(pProps.length){
    mHtml+='<h3 style="margin:16px 0 6px;font-size:13.5px;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">🎯 Upcoming Matchup Player Props ('+E(pProps[0].matchup)+')</h3>'
-    +'<div class="card wrap" style="padding:0"><table><tr><th>Market</th><th>Line</th><th>Our Proj</th><th>Ours</th><th>Fair</th><th>Edge</th><th>Best</th><th>Slip</th></tr>'
+    +'<div class="card wrap" style="padding:0"><table><tr><th>Market</th><th>Line</th><th>Our Proj</th><th>Ours</th><th>Model Fair</th><th>Model Edge</th><th>Best</th><th>Slip</th></tr>'
     +pProps.map(function(pr){
      var po=pr.side==="Over"?pr.ours:(1-pr.ours),pf=pr.side==="Over"?pr.fair:(1-pr.fair);
      return '<tr><td><b>'+E(pr.mk)+'</b></td><td>'+E(pr.side)+' '+pr.line+'</td><td><b>'+pr.proj+'</b></td><td>'+pc(po)+'</td><td>'+pc(pf)+'</td><td>'+edge(pr.edge)+'</td><td>'+(pr.best?am(pr.best[0])+' <span class="mut sm">'+E(pr.best[1])+'</span>':'—')+'</td><td><a class="sl-bl-btn" href="https://betlab.sportslabshq.com/?sport=ncaamb&amp;addleg='+encodeURIComponent((pr.aid||pr.nm)+"|"+pr.mk)+'" target="_blank" rel="noopener">➕ Slip</a></td></tr>';
